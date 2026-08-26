@@ -62,7 +62,9 @@ class FakeGatewayTransport:
         return tuple(self.registers[address + offset] for offset in range(count))
 
     async def read_coils(self, address: int, count: int, unit_id: int) -> tuple[bool, ...]:
-        return tuple(False for _ in range(count))
+        if address == 9 and count == 1:
+            return (False,)
+        raise ReadResponseError("unsupported coil")
 
     async def read_discrete_inputs(
         self, address: int, count: int, unit_id: int
@@ -103,6 +105,7 @@ def test_gateway_confirms_identity_before_control(tmp_path: Path) -> None:
         assert state.values["extract_flowrate"] == 325
         assert state.values["fpx_system_active"] is True
         assert state.values["fpx_stage"] == 2
+        assert state.values["bypass_actuator_open"] is False
         assert state.values["erv_post_heater_active"] is True
         assert state.values["erv_post_heater_mode"] == 2
 
@@ -137,6 +140,27 @@ def test_gateway_keeps_older_firmware_online_when_heater_diagnostics_are_unsuppo
         assert state.online
         assert state.values["erv_post_heater_active"] is None
         assert state.values["erv_post_heater_mode"] is None
+        await gateway.stop()
+
+    asyncio.run(run())
+
+
+def test_gateway_keeps_older_firmware_online_when_bypass_coil_is_unsupported() -> None:
+    class OlderFirmwareTransport(FakeGatewayTransport):
+        async def read_coils(
+            self, address: int, count: int, unit_id: int
+        ) -> tuple[bool, ...]:
+            raise ReadResponseError("illegal data address")
+
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.SERIAL, "/dev/ttyTEST")
+        gateway = GatewayService(
+            OlderFirmwareTransport(endpoint), endpoint=endpoint, unit_id=10
+        )
+        state = await gateway.start()
+
+        assert state.online
+        assert state.values["bypass_actuator_open"] is None
         await gateway.stop()
 
     asyncio.run(run())

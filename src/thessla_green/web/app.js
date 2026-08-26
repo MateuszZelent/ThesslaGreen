@@ -115,6 +115,7 @@ const PARAMETER_DEFINITIONS = [
   { key: "comfort_mode", label: "Aktywny tryb komfortu", values: { 0: "Nieaktywny", 1: "Grzanie", 2: "Chłodzenie" } },
   { key: "bypass_off", label: "Bypass", values: { 0: "Aktywny", 1: "Nieaktywny" } },
   { key: "bypass_mode", label: "Tryb bypassu", values: { 0: "Nieaktywny", 1: "Grzanie", 2: "Chłodzenie" } },
+  { key: "bypass_actuator_open", label: "Siłownik klapy bypassu", values: { true: "Otwarty", false: "Zamknięty" } },
   { key: "power", label: "Zasilanie centrali", values: { 0: "Wyłączona", 1: "Włączona" } },
 ];
 
@@ -290,7 +291,10 @@ function renderAirflowDiagram(snapshot) {
   const bypassModeValue = Number(values.bypass_mode);
   const bypassMode = { 0: "nieaktywny", 1: "freeheating", 2: "freecooling" }[bypassModeValue];
   const bypassEnabled = Number(values.bypass_off) === 0;
-  const bypassActive = bypassEnabled && [1, 2].includes(bypassModeValue);
+  const bypassRequested = bypassEnabled && [1, 2].includes(bypassModeValue);
+  const bypassActive = values.bypass_actuator_open === true
+    || (values.bypass_actuator_open == null && bypassRequested);
+  const bypassPending = bypassRequested && values.bypass_actuator_open === false;
   const powered = Number(values.power) === 1;
   const supplyPercentage = Number(values.supply_percentage) || 0;
   const extractPercentage = Number(values.extract_percentage) || 0;
@@ -298,9 +302,17 @@ function renderAirflowDiagram(snapshot) {
   $("diagram-mode").textContent = `Tryb: ${MODE_LABELS[mode] || "—"}`;
   $("diagram-season").textContent = `Sezon: ${season}`;
   const bypassPill = $("diagram-bypass");
-  const bypassState = bypassActive ? "active" : bypassEnabled ? "ready" : "disabled";
+  const bypassState = bypassActive
+    ? "active"
+    : bypassPending
+      ? "pending"
+      : bypassEnabled
+        ? "ready"
+        : "disabled";
   bypassPill.textContent = bypassActive
     ? `BP aktywny: ${bypassMode}`
+    : bypassPending
+      ? `BP żądany: ${bypassMode}, klapa zamknięta`
     : bypassEnabled
       ? "BP gotowy: klapa zamknięta"
       : "BP wyłączony";
@@ -309,11 +321,15 @@ function renderAirflowDiagram(snapshot) {
   $("diagram-bp-state").dataset.state = bypassState;
   $("diagram-bp-state-label").textContent = bypassActive
     ? "BP WŁĄCZONY"
+    : bypassPending
+      ? "BP OCZEKUJE"
     : bypassEnabled
       ? "BP NIEAKTYWNY"
       : "BP WYŁĄCZONY";
   $("diagram-bp-state-detail").textContent = bypassActive
     ? bypassMode.toUpperCase()
+    : bypassPending
+      ? `${bypassMode.toUpperCase()} · KLAPA ZAMKNIĘTA`
     : bypassEnabled
       ? "KLAPA ZAMKNIĘTA"
       : "FUNKCJA ZABLOKOWANA";
@@ -358,13 +374,14 @@ function renderAirflowDiagram(snapshot) {
   panel.classList.toggle("no-extract-flow", extractPercentage <= 0);
   panel.classList.toggle("is-bypass-enabled", bypassEnabled);
   panel.classList.toggle("is-bypass-active", bypassActive);
+  panel.classList.toggle("is-bypass-pending", bypassPending);
   $("airflow-svg-description").textContent =
     `Nawiew ${diagramPerformance(values.supply_percentage, values.supply_flowrate)}, ` +
     `wywiew ${diagramPerformance(values.extract_percentage, values.extract_flowrate)}. ` +
     `Temperatura zewnętrzna ${diagramTemperature(values.outdoor_temperature)}, ` +
     `nawiewu ${diagramTemperature(values.supply_temperature)} i powietrza usuwanego z domu ` +
     `${diagramTemperature(values.extract_temperature)}. ` +
-    `${bypassActive ? "Bypass aktywny, nawiew omija wymiennik." : "Nawiew przechodzi przez wymiennik."} ` +
+    `${bypassActive ? "Bypass aktywny, nawiew omija wymiennik." : bypassPending ? "Bypass żądany, ale klapa nie jest jeszcze otwarta." : "Nawiew przechodzi przez wymiennik."} ` +
     `Nagrzewnica wstępna: ${heaterStatus.fpx}; nagrzewnica wtórna ERV: ${heaterStatus.erv}. ` +
     `Wyrzutnia nie ma czujnika temperatury. Temperatura otoczenia centrali ` +
     `${diagramTemperature(values.ambient_temperature)}.`;

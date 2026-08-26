@@ -36,3 +36,12 @@ def test_mobile_screen_does_not_import_modbus_or_write_registers() -> None:
     assert "pymodbus" not in source.lower()
     assert "write_register" not in source
     assert "write_holding_register" not in source
+
+
+def test_android_release_manifest_allows_local_gateway_connection() -> None:
+    manifest = (MOBILE / "android" / "app" / "src" / "main" / "AndroidManifest.xml")
+    text = manifest.read_text(encoding="utf-8")
+
+    assert "android.permission.INTERNET" in text
+    assert 'android:usesCleartextTraffic="true"' in text
+    assert 'android:label="Thessla Green"' in text

@@ -9,7 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 
 class ThesslaGatewayException implements Exception {
   const ThesslaGatewayException(this.message, {this.statusCode, this.detail});
@@ -235,7 +235,7 @@ class ThesslaGatewayClient {
     final socketUri = uri.replace(
       scheme: uri.scheme == 'https' ? 'wss' : 'ws',
     );
-    final channel = WebSocketChannel.connect(
+    final channel = IOWebSocketChannel.connect(
       socketUri,
       headers: _headers(),
     );

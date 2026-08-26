@@ -33,9 +33,14 @@ Schemat rozróżnia zezwolenie na bypass (`bypass_off=0`) od jego faktycznej akt
 (`bypass_mode=1` dla freeheating albo `2` dla freecooling). Dopiero aktywny status zmienia
 animowaną trasę nawiewu na kanał omijający wymiennik. `bypass_mode=0` pokazuje zamkniętą klapę,
 nawet gdy funkcja bypassu jest dozwolona.
-Na środku animacji stale widoczny jest wskaźnik `BP WŁĄCZONY`, `BP NIEAKTYWNY` albo
-`BP WYŁĄCZONY`. Aktywny stan ma pulsujący punkt, wyróżnioną plakietkę, wygaszony wymiennik oraz
-animowany kanał obejściowy; ten sam stan jest powtórzony w górnym pasku schematu.
+Gateway odczytuje dodatkowo cewkę `9`, czyli fizyczny stan siłownika klapy. Gdy `bypass_mode`
+żąda pracy, ale cewka nadal wskazuje zamknięcie, panel pokazuje stan oczekiwania i nie wygasza
+wymiennika przed faktycznym otwarciem klapy. Jeśli starszy firmware nie udostępnia cewki, UI
+wraca do statusu logicznego i oznacza ograniczenie w danych parametrów.
+Na środku animacji stale widoczny jest wskaźnik `BP WŁĄCZONY`, `BP OCZEKUJE`, `BP NIEAKTYWNY`
+albo `BP WYŁĄCZONY`. Aktywny stan ma pulsujący punkt, wyróżnioną plakietkę, wygaszony wymiennik
+oraz animowany kanał obejściowy; stan oczekiwania nie wygasza wymiennika przed potwierdzeniem
+otwarcia cewką. Ten sam stan jest powtórzony w górnym pasku schematu.
 
 Na wyrzutni nie jest prezentowana zmyślona temperatura: publiczny protokół nie udostępnia
 czujnika powietrza za wymiennikiem po stronie wyrzutni. `fpx_temperature` jest pokazywana przy
@@ -120,7 +125,9 @@ nie pomiarem rzeczywistej centrali.
 5. Dodaj do dashboardu encję `fan`, sensory zadanej intensywności oraz sensory przepływu.
 
 Integracja tworzy jeden coordinator i jedną grupę urządzenia. `fan` prezentuje potwierdzoną
-nastawę ręczną/chwilową, osobne sensory prezentują bieżące zadanie nawiewu i wywiewu,
+nastawę ręczną/chwilową, binary sensor `Klapa bypassu` pokazuje fizyczny stan cewki 9,
+binary sensory `System FPX` i `Nagrzewnica wtórna ERV` pokazują dostępne stany wraz z temperaturami
+i stopniem/trybem w atrybutach, a osobne sensory prezentują bieżące zadanie nawiewu i wywiewu,
 `select` tryb pracy/tryb specjalny, a sensor `Ostatnie potwierdzone polecenie` zawiera
 szczegóły read-backu. Integracja HACS nie importuje `pymodbus` i nie może działać równolegle z
 bezpośrednią integracją Modbus tej samej centrali.

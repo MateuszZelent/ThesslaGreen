@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thessla-green-controller"
-version = "0.2.13"
+version = "0.2.14"
 description = "Local-first controller and automation service for Thessla Green heat recovery units"
 readme = "README.md"
 requires-python = ">=3.12"

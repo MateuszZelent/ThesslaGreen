@@ -143,6 +143,8 @@ h2 { font-size: 1.35rem; }
 .bypass-state-detail { fill: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .8px; }
 .bypass-state[data-state="ready"] rect { stroke: var(--navy-500); }
 .bypass-state[data-state="ready"] circle { fill: var(--warning); }
+.bypass-state[data-state="pending"] rect { fill: var(--warning-surface); stroke: var(--warning); }
+.bypass-state[data-state="pending"] circle { fill: var(--warning); animation: bypass-pulse 1.35s ease-in-out infinite; }
 .bypass-state[data-state="disabled"] rect { fill: var(--danger-surface); stroke: var(--danger-border); }
 .bypass-state[data-state="disabled"] circle { fill: var(--danger); }
 .bypass-state[data-state="active"] rect { fill: var(--accent-panel); stroke: var(--accent); filter: drop-shadow(0 0 9px var(--accent-glow)); }
@@ -158,6 +160,7 @@ h2 { font-size: 1.35rem; }
 .airflow-panel.is-bypass-active .normal-supply-route { opacity: .1; }
 .airflow-panel.is-bypass-active .normal-supply-route.air-flow { animation-play-state: paused; }
 .airflow-panel.is-bypass-active .bypass-route { opacity: 1; }
+.airflow-panel.is-bypass-pending .bypass-route { opacity: .25; }
 .bypass-indicator rect { fill: var(--accent-panel); stroke: var(--accent); stroke-width: 1; }
 .bypass-indicator text { fill: var(--text); font-size: 11px; font-weight: 900; letter-spacing: 1.5px; }
 .exchanger { transition: opacity .35s ease, filter .35s ease; }

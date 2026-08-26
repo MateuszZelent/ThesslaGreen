@@ -109,14 +109,14 @@ Rozwiązanie: pojedynczy override aktualizuje równocześnie `baudrate` i `disco
 - Chwilowe pomiary CF `256-257`, status CF `271`, bieżące intensywności `272-273` oraz zadane
   strumienie panelu Air++ `274-275`.
 - Tryby `4208`, sezon `4209`, nastawy `4210-4211` i funkcje specjalne `4224`.
-- EKO/KOMFORT `4304-4305`, bypass `4320/4330` i ON/OFF `4387`.
+- EKO/KOMFORT `4304-4305`, bypass `4320/4330`, fizyczny siłownik bypassu (`coil 9`) i ON/OFF `4387`.
 - Atomowy zapis Function 16 `[2, procent, 1]` do `4400-4402` dla trybu chwilowego.
 - Brak surowego zapisu rejestru w API; zapisy są typowane, serializowane, audytowane i
   potwierdzane read-backiem.
 - Discovery nie używa żadnej funkcji zapisu.
 
-Wizualizacja od wersji `0.2.10` rozróżnia zezwolenie na pracę bypassu (`4320`) od faktycznego
-statusu klapy (`4330`). Nie przypisuje też `fpx_temperature` do wyrzutni: `TZ2` pozostaje na torze
+Wizualizacja od wersji `0.2.14` rozróżnia zezwolenie na pracę bypassu (`4320`), żądany tryb (`4330`)
+oraz faktyczne położenie siłownika (`coil 9`). Nie przypisuje też `fpx_temperature` do wyrzutni: `TZ2` pozostaje na torze
 czerpni, `TO` opisuje otoczenie centrali, a brak publicznego czujnika wyrzutni jest pokazany jawnie.
 
 ## Ograniczenia audytu
@@ -126,14 +126,14 @@ rzeczywista reakcja Function 16 oraz zachowanie funkcji specjalnych powinny zost
 urządzeniu przy wyłączonym innym właścicielu magistrali. Protokół nie publikuje RPM; fizyczną
 reakcję można obserwować jako przepływ `m3/h` tylko wtedy, gdy Constant Flow jest aktywny.
 
-## Walidacja wersji 0.2.13
+## Walidacja wersji 0.2.14
 
 - `pytest`: testy automatyczne zaliczone;
 - `ruff`: bez błędów;
 - `mypy`: bez błędów w 41 plikach;
 - `git diff --check`: bez błędów;
-- manifest HACS i artefakt OpenAPI: poprawny JSON, wersja `0.2.13`;
-- wheel `thessla_green_controller-0.2.13-py3-none-any.whl`: zawiera zasoby Web UI.
+- manifest HACS i artefakt OpenAPI: poprawny JSON, wersja `0.2.14`;
+- wheel `thessla_green_controller-0.2.14-py3-none-any.whl`: zawiera zasoby Web UI.
 
 Środowisko audytu nie zawierało Node.js ani Flutter SDK, dlatego nie wykonano `node --check` i
 `flutter analyze`. Składnia oraz wymagane kontrakty tych adapterów są objęte testami statycznymi

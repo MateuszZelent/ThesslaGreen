@@ -13,8 +13,8 @@ It does not open Modbus and must not be configured as a second Modbus owner for 
 4. Expose only the resulting fan and sensor entities that you want to Google Assistant.
 
 The integration uses one coordinator snapshot and sends only typed commands (`fan`, operating
-mode, and special mode). It exposes a connectivity diagnostic and never exposes arbitrary register
-writes.
+mode, and special mode). It exposes connectivity, physical bypass, FPX and built-in ERV heater
+diagnostics and never exposes arbitrary register writes.
 
 The fan entity shows the confirmed manual or temporary percentage. Its attributes include the
 instantaneous supply/exhaust airflow in m³/h and the last command's read-back result. The vendor

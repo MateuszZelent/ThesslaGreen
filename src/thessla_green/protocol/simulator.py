@@ -49,6 +49,7 @@ class SimulatedAirPackTransport:
         temporary_fan_speed: int = 40,
         special_mode: int = 0,
         power: bool = True,
+        bypass_open: bool = False,
         constant_flow_active: bool = True,
         airflow_factor: float = 6.0,
         response_delay_seconds: float = 0.0,
@@ -72,6 +73,7 @@ class SimulatedAirPackTransport:
         self.response_delay_seconds = response_delay_seconds
         self.readback_offset = readback_offset
         self.constant_flow_active = constant_flow_active
+        self.bypass_open = bypass_open
         self.writes: list[tuple[int, int, int]] = []
         self.write_blocks: list[tuple[int, tuple[int, ...], int]] = []
         self._connected = False
@@ -158,7 +160,9 @@ class SimulatedAirPackTransport:
     async def read_coils(self, address: int, count: int, unit_id: int) -> tuple[bool, ...]:
         self._before_request(unit_id)
         await self._delay()
-        return tuple(False for _ in range(count))
+        if address == 9 and count == 1:
+            return (self.bypass_open,)
+        raise ReadResponseError(f"simulator does not expose coil {address}")
 
     async def read_discrete_inputs(
         self, address: int, count: int, unit_id: int

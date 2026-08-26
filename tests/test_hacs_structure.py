@@ -36,3 +36,13 @@ def test_home_assistant_adapter_does_not_own_modbus() -> None:
 
     assert "pymodbus" not in source
     assert "AsyncModbus" not in source
+
+
+def test_hacs_exposes_built_in_heater_and_bypass_states_from_one_snapshot() -> None:
+    binary_sensor = (INTEGRATION / "binary_sensor.py").read_text(encoding="utf-8")
+
+    assert "ThesslaGreenBypassSensor" in binary_sensor
+    assert "ThesslaGreenFpxSensor" in binary_sensor
+    assert "ThesslaGreenErvPostHeaterSensor" in binary_sensor
+    assert "fpx_stage" in binary_sensor
+    assert "erv_post_heater_mode" in binary_sensor

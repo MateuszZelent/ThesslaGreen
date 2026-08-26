@@ -32,6 +32,7 @@ def test_simulator_supports_discovery_control_and_airflow_feedback() -> None:
         assert state.values["fpx_stage"] == 1
         assert state.values["erv_post_heater_active"] is True
         assert state.values["erv_post_heater_mode"] == 2
+        assert state.values["bypass_actuator_open"] is False
         initial_airflow = state.values["supply_airflow"]
         assert isinstance(initial_airflow, (int, float))
 

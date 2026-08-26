@@ -9,6 +9,7 @@ i adres urządzenia `10`.
 
 | Parametr | Obszar / funkcja | Adres hex | Adres dec. | Kodowanie | Dostęp |
 |---|---|---:|---:|---|---|
+| Stan siłownika bypassu (`bypass`) | coil / 01 | `0x0009` | 9 | 0 OFF, 1 ON | R/- |
 | Firmware major (`MM`) | input / 04 | `0x0000` | 0 | uint16 | R/- |
 | Firmware minor (`mm`) | input / 04 | `0x0001` | 1 | uint16 | R/- |
 | Firmware patch (`pp`) | input / 04 | `0x0004` | 4 | uint16 | R/- |

@@ -213,6 +213,7 @@ class _GatewayPageState extends State<GatewayPage> {
     final values = state?.values ?? const <String, dynamic>{};
     final activeSupply = state?.supplyPercentage;
     final activeExtract = state?.extractPercentage;
+    final powerOn = state?.powerOn ?? false;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thessla Green'),
@@ -280,7 +281,7 @@ class _GatewayPageState extends State<GatewayPage> {
                   Text('Sterowanie', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _selectedMode,
+                    initialValue: _selectedMode,
                     decoration: const InputDecoration(labelText: 'Tryb pracy'),
                     items: _modeNames
                         .map(
@@ -339,7 +340,7 @@ class _GatewayPageState extends State<GatewayPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _selectedSpecialMode,
+                    initialValue: _selectedSpecialMode,
                     decoration: const InputDecoration(labelText: 'Tryb specjalny'),
                     items: _specialModeNames
                         .map((name) => DropdownMenuItem(value: name, child: Text(name)))
@@ -362,7 +363,7 @@ class _GatewayPageState extends State<GatewayPage> {
                               _run(
                                 () => _sendCommand(
                                   'set_power',
-                                  {'enabled': !(state?.powerOn ?? false)},
+                                  {'enabled': !powerOn},
                                 ),
                               ),
                             ),

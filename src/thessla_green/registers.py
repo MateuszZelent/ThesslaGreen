@@ -44,6 +44,10 @@ class RegisterDefinition:
 # The mode/control words are R/W and are the only write surface exposed by the
 # first controller implementation.
 REGISTERS: tuple[RegisterDefinition, ...] = (
+    RegisterDefinition(
+        "bypass_actuator_open", 9, RegisterArea.COIL,
+        description="Rzeczywisty stan wyjścia siłownika klapy bypassu: 0 OFF, 1 ON",
+    ),
     RegisterDefinition("firmware_major", 0, RegisterArea.INPUT, description="MM"),
     RegisterDefinition("firmware_minor", 1, RegisterArea.INPUT, description="mm"),
     RegisterDefinition("firmware_patch", 4, RegisterArea.INPUT, description="pp"),

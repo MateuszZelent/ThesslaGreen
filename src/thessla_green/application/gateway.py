@@ -196,6 +196,7 @@ class GatewayService:
             comfort = await self.transport.read_holding_registers(4304, 2, self.unit_id)
             bypass_off = await self.transport.read_holding_registers(4320, 1, self.unit_id)
             bypass_mode = await self.transport.read_holding_registers(4330, 1, self.unit_id)
+            bypass_actuator_open = await self._read_optional_coil(9)
             power = await self.transport.read_holding_registers(4387, 1, self.unit_id)
             erv_post_heater = await self._read_optional_holding_register(4704)
             erv_post_heater_mode = await self._read_optional_holding_register(4711)
@@ -248,6 +249,7 @@ class GatewayService:
                 "comfort_mode": comfort[1],
                 "bypass_off": bypass_off[0],
                 "bypass_mode": bypass_mode[0],
+                "bypass_actuator_open": bypass_actuator_open,
                 "power": power[0],
                 "erv_post_heater_active": (
                     bool(erv_post_heater) if erv_post_heater in (0, 1) else None
@@ -292,6 +294,17 @@ class GatewayService:
         if len(values) != 1:
             return None
         return int(values[0])
+
+    async def _read_optional_coil(self, address: int) -> bool | None:
+        """Read a physical actuator state without making it a gateway requirement."""
+
+        try:
+            values = await self.transport.read_coils(address, 1, self.unit_id)
+        except ReadResponseError:
+            return None
+        if len(values) != 1:
+            return None
+        return bool(values[0])
 
     async def _persist_state(self) -> None:
         if self.store is None:
