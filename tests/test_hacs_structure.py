@@ -12,9 +12,7 @@ def test_hacs_repository_contains_one_valid_integration() -> None:
     manifest = json.loads((INTEGRATION / "manifest.json").read_text(encoding="utf-8"))
 
     assert hacs == {"name": "Thessla Green", "content_in_root": False}
-    assert sorted(path.name for path in (ROOT / "custom_components").iterdir()) == [
-        "thessla_green"
-    ]
+    assert sorted(path.name for path in (ROOT / "custom_components").iterdir()) == ["thessla_green"]
     assert {
         "domain",
         "name",
@@ -25,17 +23,19 @@ def test_hacs_repository_contains_one_valid_integration() -> None:
     } <= manifest.keys()
     assert manifest["domain"] == "thessla_green"
     assert manifest["config_flow"] is True
-    assert manifest["requirements"] == []
+    assert manifest["requirements"] == ["pymodbus==3.13.1", "pyserial==3.5"]
 
 
-def test_home_assistant_adapter_does_not_own_modbus() -> None:
-    source = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in INTEGRATION.glob("*.py")
-    )
+def test_home_assistant_adapter_supports_one_direct_modbus_owner() -> None:
+    direct = (INTEGRATION / "direct.py").read_text(encoding="utf-8")
+    init_source = (INTEGRATION / "__init__.py").read_text(encoding="utf-8")
+    transport = INTEGRATION / "_core" / "protocol" / "transport.py"
 
-    assert "pymodbus" not in source
-    assert "AsyncModbus" not in source
+    assert transport.is_file()
+    assert "PymodbusTransport(endpoint)" in direct
+    assert "GatewayService(" in direct
+    assert "await entry.runtime_data.api.async_close()" in init_source
+    assert "CONNECTION_GATEWAY if CONF_URL in entry.data" in init_source
 
 
 def test_hacs_exposes_built_in_heater_and_bypass_states_from_one_snapshot() -> None:
@@ -48,25 +48,46 @@ def test_hacs_exposes_built_in_heater_and_bypass_states_from_one_snapshot() -> N
     assert "erv_post_heater_mode" in binary_sensor
 
 
-def test_hacs_registers_the_gateway_ui_panel_without_a_second_modbus_owner() -> None:
+def test_hacs_registers_one_ui_for_direct_and_gateway_modes() -> None:
     panel = INTEGRATION / "www" / "panel.js"
     init_source = (INTEGRATION / "__init__.py").read_text(encoding="utf-8")
 
     assert panel.is_file()
     panel_source = panel.read_text(encoding="utf-8")
-    assert "const TAG_NAME = \"thessla-green-panel\"" in panel_source
+    assert 'const TAG_NAME = "thessla-green-panel"' in panel_source
     assert "customElements.define(TAG_NAME" in panel_source
     assert "gateway_url" in panel_source
+    assert "connection_type" in panel_source
+    assert "this._hass.callApi" in panel_source
+    assert "properties?.hass" in panel_source
+    assert (INTEGRATION / "www" / "direct" / "index.html").is_file()
+    assert (INTEGRATION / "www" / "direct" / "app.js").is_file()
     assert "async_register_static_paths" in init_source
     assert "async_register_built_in_panel" in init_source
     assert "pymodbus" not in panel_source
 
 
-def test_hacs_config_flow_shows_gateway_discovery_evidence() -> None:
+def test_hacs_config_flow_defaults_to_read_only_direct_discovery() -> None:
     config_flow = (INTEGRATION / "config_flow.py").read_text(encoding="utf-8")
     strings = json.loads((INTEGRATION / "strings.json").read_text(encoding="utf-8"))
 
-    assert "async_get_serial_ports" in config_flow
+    assert "async_step_direct" in config_flow
+    assert "enumerate_serial_ports" in config_flow
+    assert "AirPackProbe().run" in config_flow
+    assert "PymodbusTransport" in config_flow
+    assert "async_step_gateway" in config_flow
     assert "async_step_confirm" in config_flow
-    assert "serial_ports" in strings["config"]["step"]["confirm"]["description"]
+    assert "serial_ports" in strings["config"]["step"]["direct"]["description"]
+    assert "Bezpośredni Modbus" in strings["config"]["step"]["user"]["menu_options"]["direct"]
+    assert "port_busy" in strings["config"]["error"]
     assert "device_not_found" in strings["config"]["error"]
+
+
+def test_direct_panel_uses_authenticated_home_assistant_bridge() -> None:
+    app = (INTEGRATION / "www" / "direct" / "app.js").read_text(encoding="utf-8")
+    http = (INTEGRATION / "http.py").read_text(encoding="utf-8")
+
+    assert "thessla-green-request" in app
+    assert "window.parent.postMessage" in app
+    assert "requires_auth = True" in http
+    assert "runtime.coordinator.async_send_command" in http

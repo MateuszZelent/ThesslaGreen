@@ -8,7 +8,14 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import MODE_NAMES, MODE_OPTIONS, SPECIAL_MODE_NAMES, SPECIAL_MODE_OPTIONS
+from .const import (
+    MODE_LABELS,
+    MODE_NAMES,
+    MODE_OPTIONS,
+    SPECIAL_MODE_LABELS,
+    SPECIAL_MODE_NAMES,
+    SPECIAL_MODE_OPTIONS,
+)
 from .entity import ThesslaGreenEntity
 
 
@@ -30,7 +37,7 @@ class ThesslaGreenModeSelect(ThesslaGreenEntity, SelectEntity):
     """Automatic/manual/temporary operating mode."""
 
     _attr_name = "Tryb pracy"
-    _attr_options = list(MODE_OPTIONS)
+    _attr_options = list(MODE_LABELS.values())
 
     def __init__(self, coordinator) -> None:
         super().__init__(coordinator, "mode")
@@ -38,29 +45,29 @@ class ThesslaGreenModeSelect(ThesslaGreenEntity, SelectEntity):
     @property
     def current_option(self) -> str | None:
         try:
-            return MODE_NAMES[int(self.values["mode"])]
+            raw_mode = MODE_NAMES[int(self.values["mode"])]
+            return MODE_LABELS.get(raw_mode, raw_mode)
         except (KeyError, TypeError, ValueError):
             return None
 
     async def async_select_option(self, option: str) -> None:
-        if option not in MODE_OPTIONS:
+        raw_option = next((name for name, label in MODE_LABELS.items() if label == option), option)
+        if raw_option not in MODE_OPTIONS:
             raise ValueError(f"unsupported operating mode: {option}")
-        if option == "temporary":
+        if raw_option == "temporary":
             percentage = self.values.get("temporary_fan_speed")
             if not isinstance(percentage, (int, float)) or isinstance(percentage, bool):
                 raise ValueError("temporary fan speed is unavailable")
-            await self.async_send_command(
-                "activate_temporary_mode", percentage=int(percentage)
-            )
+            await self.async_send_command("activate_temporary_mode", percentage=int(percentage))
             return
-        await self.async_send_command("set_mode", mode=option)
+        await self.async_send_command("set_mode", mode=raw_option)
 
 
 class ThesslaGreenSpecialModeSelect(ThesslaGreenEntity, SelectEntity):
     """Documented AirPack special modes."""
 
     _attr_name = "Tryb specjalny"
-    _attr_options = list(SPECIAL_MODE_OPTIONS)
+    _attr_options = [SPECIAL_MODE_LABELS.get(name, name) for name in SPECIAL_MODE_OPTIONS]
 
     def __init__(self, coordinator) -> None:
         super().__init__(coordinator, "special_mode")
@@ -71,9 +78,13 @@ class ThesslaGreenSpecialModeSelect(ThesslaGreenEntity, SelectEntity):
             name = SPECIAL_MODE_NAMES[int(self.values["special_mode"])]
         except (KeyError, TypeError, ValueError):
             return None
-        return name if name in self.options else None
+        label = SPECIAL_MODE_LABELS.get(name, name)
+        return label if label in self.options else None
 
     async def async_select_option(self, option: str) -> None:
-        if option not in SPECIAL_MODE_OPTIONS:
+        raw_option = next(
+            (name for name, label in SPECIAL_MODE_LABELS.items() if label == option), option
+        )
+        if raw_option not in SPECIAL_MODE_OPTIONS:
             raise ValueError(f"unsupported special mode: {option}")
-        await self.async_send_command("set_special_mode", mode=option)
+        await self.async_send_command("set_special_mode", mode=raw_option)

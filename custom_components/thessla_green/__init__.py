@@ -1,4 +1,4 @@
-"""Home Assistant adapter for a Thessla Green FastAPI gateway."""
+"""Home Assistant adapter for direct Modbus or an external gateway."""
 
 from __future__ import annotations
 
@@ -10,11 +10,29 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from ._core.domain.models import TransportEndpoint, TransportKind
 from .api import GatewayApi
-from .const import CONF_TOKEN, CONF_URL, DOMAIN
+from .const import (
+    CONF_BAUDRATE,
+    CONF_CONNECTION_TYPE,
+    CONF_SERIAL_PORT,
+    CONF_TIMEOUT,
+    CONF_TOKEN,
+    CONF_UNIT_ID,
+    CONF_URL,
+    CONNECTION_DIRECT,
+    CONNECTION_GATEWAY,
+    DEFAULT_BAUDRATE,
+    DEFAULT_TIMEOUT,
+    DEFAULT_UNIT_ID,
+    DOMAIN,
+)
 from .coordinator import ThesslaGreenCoordinator
+from .direct import DirectModbusApi
+from .http import VIEWS
 
 _LOGGER = logging.getLogger(__name__)
 _FRONTEND_URL = "/api/thessla_green/frontend"
@@ -31,11 +49,29 @@ PLATFORMS: list[Platform] = [
 
 @dataclass(slots=True)
 class RuntimeData:
-    api: GatewayApi
+    api: GatewayApi | DirectModbusApi
     coordinator: ThesslaGreenCoordinator
 
 
 type ThesslaGreenConfigEntry = ConfigEntry[RuntimeData]
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Register the authenticated API used by the bundled direct-mode panel."""
+
+    for view in VIEWS:
+        hass.http.register_view(view)
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Mark pre-0.3 HTTP-only entries explicitly as external gateway mode."""
+
+    if entry.version == 1:
+        data = dict(entry.data)
+        data.setdefault(CONF_CONNECTION_TYPE, CONNECTION_GATEWAY)
+        hass.config_entries.async_update_entry(entry, data=data, version=2)
+    return True
 
 
 def _panel_url_path(entry: ConfigEntry) -> str:
@@ -77,7 +113,9 @@ async def _async_register_frontend_panel(
                 "embed_iframe": False,
                 "trust_external": False,
                 "config": {
-                    "gateway_url": str(entry.data[CONF_URL]),
+                    "connection_type": _connection_type(entry),
+                    "gateway_url": str(entry.data.get(CONF_URL, "")),
+                    "entry_id": entry.entry_id,
                     "title": title,
                 },
             }
@@ -89,14 +127,35 @@ async def _async_register_frontend_panel(
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ThesslaGreenConfigEntry) -> bool:
-    session = async_get_clientsession(hass)
-    api = GatewayApi(
-        session,
-        entry.data[CONF_URL],
-        entry.data.get(CONF_TOKEN),
-    )
+    if _connection_type(entry) == CONNECTION_DIRECT:
+        endpoint = TransportEndpoint(
+            TransportKind.SERIAL,
+            str(entry.data[CONF_SERIAL_PORT]),
+            baudrate=int(entry.data.get(CONF_BAUDRATE, DEFAULT_BAUDRATE)),
+            timeout_seconds=float(entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)),
+        )
+        api: GatewayApi | DirectModbusApi = DirectModbusApi(
+            endpoint,
+            int(entry.data.get(CONF_UNIT_ID, DEFAULT_UNIT_ID)),
+        )
+    else:
+        session = async_get_clientsession(hass)
+        api = GatewayApi(
+            session,
+            entry.data[CONF_URL],
+            entry.data.get(CONF_TOKEN),
+        )
+    try:
+        await api.async_start()
+    except Exception as exc:
+        await api.async_close()
+        raise ConfigEntryNotReady(str(exc)) from exc
     coordinator = ThesslaGreenCoordinator(hass, entry, api)
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        await api.async_close()
+        raise
     entry.runtime_data = RuntimeData(api=api, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     try:
@@ -110,6 +169,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ThesslaGreenConfigEntry)
 
 async def async_unload_entry(hass: HomeAssistant, entry: ThesslaGreenConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        await entry.runtime_data.api.async_close()
     try:
         from homeassistant.components import frontend
 
@@ -117,3 +178,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ThesslaGreenConfigEntry
     except (ImportError, RuntimeError, ValueError) as exc:
         _LOGGER.debug("Unable to remove the Thessla Green sidebar panel: %s", exc)
     return unloaded
+
+
+def _connection_type(entry: ConfigEntry) -> str:
+    """Keep entries created before direct mode working as gateway entries."""
+
+    configured = entry.data.get(CONF_CONNECTION_TYPE)
+    if configured in {CONNECTION_DIRECT, CONNECTION_GATEWAY}:
+        return str(configured)
+    return CONNECTION_GATEWAY if CONF_URL in entry.data else CONNECTION_DIRECT

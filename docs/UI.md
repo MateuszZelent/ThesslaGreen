@@ -88,7 +88,8 @@ SQLite (`THESSLA_DATABASE_URL`), z ograniczoną retencją; awaria zapisu histori
 odczytu ani sterowania.
 
 Panel nie raportuje RPM, bo dokument protokołu udostępnia przepływ w m³/h, a nie prędkość
-obrotową wentylatora. Wymaga tego samego jedynego gatewaya co HACS i klient mobilny.
+obrotową wentylatora. W profilu standalone korzysta z gatewaya, a w profilu HACS z jednego
+koordynatora będącego bezpośrednim właścicielem Modbus.
 
 Adresy zasobów panelu są wersjonowane razem z wydaniem gatewaya, więc po aktualizacji przeglądarka
 nie powinna użyć starego JavaScriptu z cache. Po zmianie wersji zrestartuj gateway i wykonaj twarde
@@ -120,22 +121,29 @@ nie pomiarem rzeczywistej centrali.
 
 1. W HACS wybierz **Custom repositories** i dodaj repozytorium jako typ **Integration**.
 2. Zainstaluj `Thessla Green` i zrestartuj Home Assistant.
-3. W **Settings → Devices & services → Add integration** wybierz **Thessla Green**.
-4. Podaj URL gatewaya i token, jeśli jest włączony. Drugi krok kreatora pokaże potwierdzoną
-   centralę, endpoint/unit ID oraz porty widoczne na hoście gatewaya.
-5. Po zapisaniu konfiguracji w bocznym menu pojawi się panel **Thessla Green** z tą samą grafiką
-   animacji i panelem sterowania co lokalny `/ui/` gatewaya.
-6. Opcjonalnie dodaj do własnego dashboardu encję `fan`, sensory zadanej intensywności oraz
+3. Wyłącz starą integrację Modbus lub gateway zajmujący ten sam adapter.
+4. W **Settings → Devices & services → Add integration** wybierz **Thessla Green**.
+5. Wybierz **Bezpośredni Modbus (zalecane)**. Kreator pokaże porty widoczne wewnątrz Home
+   Assistanta, podpowie stabilny `/dev/serial/by-id/...` i wykona read-only fingerprint.
+6. Pozostaw `unit ID = 10`, `baudrate = 9600` i `8N1`, o ile sterownik nie został skonfigurowany
+   inaczej. Potwierdź wykryty model, firmware i numer seryjny.
+7. Po zapisaniu konfiguracji w bocznym menu pojawi się panel **Thessla Green** z tą samą grafiką
+   animacji i sterowaniem. Nie wymaga URL, tokenu ani uruchomionego FastAPI.
+8. Opcjonalnie dodaj do własnego dashboardu encję `fan`, sensory zadanej intensywności oraz
    sensory przepływu.
+
+Tryb **Zewnętrzny gateway FastAPI** pozostaje dostępny dla instalacji, w których osobny proces
+obsługuje aplikację mobilną i jest właścicielem Modbus. Tych trybów nie wolno łączyć dla tego
+samego portu.
 
 Integracja tworzy jeden coordinator i jedną grupę urządzenia. `fan` prezentuje potwierdzoną
 nastawę ręczną/chwilową, binary sensor `Klapa bypassu` pokazuje fizyczny stan cewki 9,
 binary sensory `System FPX` i `Nagrzewnica wtórna ERV` pokazują dostępne stany wraz z temperaturami
 i stopniem/trybem w atrybutach, a osobne sensory prezentują bieżące zadanie nawiewu i wywiewu,
 `select` tryb pracy/tryb specjalny, a sensor `Ostatnie potwierdzone polecenie` zawiera
-szczegóły read-backu. Integracja HACS nie importuje `pymodbus` i nie może działać równolegle z
-bezpośrednią integracją Modbus tej samej centrali.
+szczegóły read-backu. W trybie bezpośrednim integracja używa dołączonego rdzenia protokołu oraz
+jednego transportu PyModbus. Nie może działać równolegle z inną integracją Modbus tej centrali.
 
-Panel boczny jest tylko osadzonym widokiem publicznego UI gatewaya — HACS nie otwiera portu
-szeregowego ani nie wykonuje drugiego odczytu Modbus. Jeżeli gateway wymaga tokenu, wpisz go w
-polu tokenu w osadzonym panelu; token nie jest przekazywany w adresie URL.
+Panel boczny w trybie bezpośrednim pobiera snapshot z uwierzytelnionego endpointu HA i nie wykonuje
+osobnego odczytu Modbus — sprzęt odpytuje wyłącznie coordinator. Polecenia wracają do tego samego
+runtime'u i przechodzą read-back. W trybie zewnętrznym panel nadal osadza UI gatewaya.

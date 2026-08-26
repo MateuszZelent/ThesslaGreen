@@ -8,7 +8,7 @@ from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import SPECIAL_MODE_NAMES, SPECIAL_MODE_OPTIONS
+from .const import SPECIAL_MODE_LABELS, SPECIAL_MODE_NAMES, SPECIAL_MODE_OPTIONS
 from .entity import ThesslaGreenEntity
 
 
@@ -70,8 +70,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
     def preset_modes(self) -> list[str]:
         configured = self.coordinator.control_options.get("special_modes")
         if isinstance(configured, dict) and configured:
-            return [str(name) for name in configured]
-        return list(SPECIAL_MODE_OPTIONS)
+            return [SPECIAL_MODE_LABELS.get(str(name), str(name)) for name in configured]
+        return [SPECIAL_MODE_LABELS.get(name, name) for name in SPECIAL_MODE_OPTIONS]
 
     @property
     def preset_mode(self) -> str | None:
@@ -80,7 +80,8 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             name = SPECIAL_MODE_NAMES[int(value)]
         except (KeyError, TypeError, ValueError):
             return None
-        return name if name in self.preset_modes else None
+        label = SPECIAL_MODE_LABELS.get(name, name)
+        return label if label in self.preset_modes else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self.async_send_command("set_power", enabled=True)
@@ -98,6 +99,10 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
             await self.async_send_command("set_fan_speed", percentage=percentage)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        if preset_mode not in self.preset_modes:
+        raw_mode = next(
+            (name for name, label in SPECIAL_MODE_LABELS.items() if label == preset_mode),
+            preset_mode,
+        )
+        if raw_mode not in SPECIAL_MODE_OPTIONS:
             raise ValueError(f"unsupported special mode: {preset_mode}")
-        await self.async_send_command("set_special_mode", mode=preset_mode)
+        await self.async_send_command("set_special_mode", mode=raw_mode)

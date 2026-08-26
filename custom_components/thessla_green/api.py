@@ -34,6 +34,14 @@ class GatewayApi:
         self.base_url = base_url.rstrip("/")
         self.token = token or None
 
+    async def async_close(self) -> None:
+        """The Home Assistant-owned HTTP session has no per-entry lifecycle."""
+
+    async def async_start(self) -> dict[str, Any]:
+        """Match the direct runtime lifecycle boundary."""
+
+        return await self.async_test_connection()
+
     async def _request(
         self,
         method: str,

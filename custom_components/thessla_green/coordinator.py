@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import GatewayApi, GatewayAuthError, GatewayError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .direct import DirectModbusApi
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
-        api: GatewayApi,
+        api: GatewayApi | DirectModbusApi,
         *,
         update_interval: timedelta = DEFAULT_SCAN_INTERVAL,
     ) -> None:
@@ -49,6 +50,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise ConfigEntryAuthFailed(str(exc)) from exc
         except GatewayError as exc:
             raise UpdateFailed(str(exc)) from exc
+        except Exception as exc:
+            raise UpdateFailed(str(exc)) from exc
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
@@ -56,6 +59,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except GatewayAuthError as exc:
             raise ConfigEntryAuthFailed(str(exc)) from exc
         except GatewayError as exc:
+            raise UpdateFailed(str(exc)) from exc
+        except Exception as exc:
             raise UpdateFailed(str(exc)) from exc
 
     async def async_send_command(
@@ -79,6 +84,8 @@ class ThesslaGreenCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except GatewayAuthError as exc:
             raise ConfigEntryAuthFailed(str(exc)) from exc
         except GatewayError as exc:
+            raise UpdateFailed(str(exc)) from exc
+        except Exception as exc:
             raise UpdateFailed(str(exc)) from exc
         state = response.get("state")
         result = response.get("result")

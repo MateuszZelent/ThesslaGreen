@@ -81,7 +81,7 @@ def create_app(
 
     app = FastAPI(
         title="Thessla Green Gateway",
-        version="0.2.14",
+        version="0.3.0",
         description="Local-first, read-confirmed control API for AirPack units.",
         lifespan=lifespan,
         dependencies=[Depends(authorize)] if api_token else None,

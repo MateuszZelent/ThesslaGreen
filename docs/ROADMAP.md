@@ -100,7 +100,7 @@ idempotencję i błędy, a ponowne uruchomienie nie gubi konfiguracji ani audytu
 - osobne repozytorium zawierające dokładnie jedną integrację w
   `custom_components/thessla_green`;
 - `hacs.json`, kompletny `manifest.json`, README, licencja i wersjonowane release'y;
-- `config_flow` dla połączenia z gatewayem, walidacja danych, reauth i reconfigure;
+- `config_flow` z domyślnym Direct Modbus, read-only discovery oraz opcjonalnym gatewayem;
 - wspólny `DataUpdateCoordinator` oraz mapowanie na `fan`, `sensor`, `binary_sensor`, `select` i
   `button`;
 - stabilne `unique_id`, `DeviceInfo`, availability i encje zależne od capabilities;
@@ -108,17 +108,18 @@ idempotencję i błędy, a ponowne uruchomienie nie gubi konfiguracji ani audytu
 - testy jednostkowe integracji, HACS Action i Hassfest w CI;
 - test instalacji przez HACS jako custom repository, a później zgłoszenie do domyślnego katalogu.
 
-### Dostępny wycinek 0.2.15
+### Dostępny wycinek 0.3.0
 
 Repozytorium zawiera instalowalny pakiet `custom_components/thessla_green` z config flow,
-coordinatorem, fanem, sensorami, trybami, diagnostyką, wykrywaniem informacji o gatewayu w kreatorze
-oraz automatycznie rejestrowanym panelem bocznym osadzającym `/ui/`. Integracja łączy się wyłącznie
-z gatewayem; przed publikacją do katalogu domyślnego pozostają Hassfest, pełny test na czystym HA i
-release Git.
+coordinatorem, fanem, sensorami, trybami, diagnostyką i automatycznie rejestrowanym panelem bocznym.
+Domyślny kreator wykrywa lokalne porty, wykonuje read-only fingerprint i uruchamia HA jako jedynego
+właściciela Modbus; tryb zewnętrznego gatewaya pozostaje opcjonalny. Panel Direct używa
+uwierzytelnionego API HA, bez tokenu i osobnego serwera. Przed publikacją do katalogu domyślnego
+pozostają Hassfest, pełny test na czystym HA i release Git.
 
 **Gotowe, gdy:** czysta instalacja Home Assistant dodaje integrację wyłącznie przez UI, wszystkie
-encje odtwarzają stan gatewaya, a sterowanie z HA kończy się tym samym potwierdzonym poleceniem co
-API.
+encje odtwarzają stan wybranego runtime'u, a sterowanie z HA kończy się tym samym potwierdzonym
+poleceniem co API.
 
 ## Etap 5 — aplikacja mobilna Dart/Flutter
 
@@ -152,6 +153,10 @@ polecenia drugi raz, a aplikacja odzyskuje aktualny stan po utracie sieci.
 **Gotowe, gdy:** użytkownik może bezpiecznie odczytać stan oraz zmienić wydajność przez Google
 Home, a funkcje serwisowe i ryzykowne nie są eksponowane.
 
+Instrukcja bezpłatnej ręcznej integracji Cloud-to-Cloud jest dostępna w `docs/GOOGLE_HOME.md`.
+Encje `fan`, `select` i sensory temperatur używają domen obsługiwanych przez oficjalną integrację
+Google Assistant; pełny test wymaga konta Google, publicznego HTTPS i fizycznej centrali.
+
 ## Etap 7 — automatyka i dojrzałość operacyjna
 
 - harmonogram bazowy i scenariusze obecność/nieobecność/noc;
@@ -166,7 +171,7 @@ każdego adaptera nie łamie pozostałych kanałów.
 
 ## Po MVP — decyzje produktowe, nie zobowiązania
 
-- profil Direct HA, w którym integracja jest właścicielem Modbus;
+- dalsze testy sprzętowe profilu Direct HA, w którym integracja jest właścicielem Modbus;
 - dodatek Home Assistant uruchamiający gateway;
 - bezpośrednia integracja Google Cloud-to-cloud z OAuth, fulfillmentem, Report State i
   certyfikacją;
@@ -175,10 +180,10 @@ każdego adaptera nie łamie pozostałych kanałów.
 
 ## Najbliższy sprint
 
-1. Uruchomić gateway 0.2.0 na potwierdzonym AirPack4 (firmware 4.85.16, unit 10) i wykonać
-   kontrolowany test `manual` + 40% z read-backiem.
-2. Zainstalować integrację HACS 0.2.0, dodać encję `fan` do dashboardu i potwierdzić przepływ
-   nawiewu/wywiewu po zmianie nastawy.
+1. Zainstalować integrację HACS 0.3.0 w profilu Direct na potwierdzonym AirPack4
+   (firmware 4.85.16, unit 10) i wykonać kontrolowany test `manual` + 40% z read-backiem.
+2. Dodać encję `fan` do dashboardu i potwierdzić przepływ nawiewu/wywiewu po zmianie nastawy;
+   osobno przetestować opcjonalny profil gatewaya 0.3.0 dla aplikacji mobilnej.
 3. Zapisać 24-godzinny test stabilności snapshotów jako kryterium wejścia do automatyki.
 4. Dodać agregację/backup i test odtworzenia trwałej historii telemetrycznej w SQLite; zapis
    snapshotów, audytu i endpoint historii są już dostępne bez naruszania jednego właściciela

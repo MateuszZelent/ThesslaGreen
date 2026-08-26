@@ -16,31 +16,19 @@ Najważniejszy niezmiennik: **dla jednej fizycznej centrali istnieje dokładnie 
 połączenia Modbus i jeden wykonawca zapisów**. Aplikacja mobilna, Home Assistant i Google Home
 nie zapisują rejestrów bezpośrednio.
 
-Gateway dodatkowo utrzymuje lokalną dzierżawę procesu dla klucza endpointu. Drugi proces tego
-samego projektu otrzymuje błąd właściciela jeszcze przed otwarciem transportu; blokada jest
+Runtime będący właścicielem utrzymuje lokalną dzierżawę procesu dla klucza endpointu. Drugi proces
+tego samego projektu otrzymuje błąd właściciela jeszcze przed otwarciem transportu; blokada jest
 advisory lockiem zwalnianym automatycznie przez system po zakończeniu procesu. Nie zastępuje to
 zatrzymania obcej integracji HA, ale ogranicza przypadkowe uruchomienie dwóch naszych gatewayów.
 
 ## Podział na warstwy
 
 ```text
-                         Google Home
-                              ^
-                              | encje HA: fan/sensor/binary_sensor
-                              |
-Flutter/Dart <---- HTTPS/WS ----+----> Integracja HACS
-          \                    |           /
-           \                   v          /
-            +---------- FastAPI gateway --+
-                              |
-                 Application services
-                 (polecenia, polityki, audyt)
-                              |
-                  Domain model + capabilities
-                              |
-                  Protocol (Modbus RTU/TCP)
-                              |
-                       Thessla Green
+Profil Direct HA (domyślny):
+Google Home -> encje HA -> HACS/coordinator -> application/core -> Modbus -> AirPack
+
+Profil Gateway (opcjonalny):
+Flutter + HACS -> FastAPI gateway -> application/core -> Modbus -> AirPack
 ```
 
 Warstwy wewnętrzne nie zależą od FastAPI ani Home Assistant:
@@ -59,7 +47,16 @@ FastAPI, Home Assistant, Pydantic ani klienta Google.
 
 ## Profile wdrożenia
 
-### Profil A — Gateway (zalecany dla trzech kanałów)
+### Profil A — Direct HA (domyślny dla instalacji HACS)
+
+Integracja Home Assistant dostarcza bibliotekę protokołu we własnym artefakcie, sama otwiera port
+i jest jedynym właścicielem Modbus. Config flow wykrywa porty, wykonuje read-only fingerprint i
+nie pyta o URL ani token. Panel korzysta z uwierzytelnionego API HA oraz tego samego koordynatora.
+
+Aplikacja mobilna korzysta wtedy z API Home Assistanta. Nie wolno równolegle uruchamiać backendu
+FastAPI podłączonego do tego samego adaptera.
+
+### Profil B — Gateway (dla niezależnej aplikacji mobilnej)
 
 Osobny proces `thessla-green-gateway` jest właścicielem Modbus. FastAPI udostępnia lokalne API,
 a integracja HACS łączy się z gatewayem przez HTTP i WebSocket. Aplikacja Flutter korzysta z tego
@@ -76,13 +73,6 @@ Gateway może działać jako usługa systemd, kontener albo w przyszłości doda
 Dodatek HA i integracja HACS to dwa różne artefakty: HACS instaluje custom integration, nie usługę
 systemową ani dowolną bibliotekę.
 
-### Profil B — Direct HA (opcjonalny, późniejszy)
-
-Integracja Home Assistant sama korzysta z biblioteki protokołu i jest właścicielem Modbus. Profil
-jest wygodny dla użytkownika bez osobnego gatewaya, ale nie wolno w nim uruchamiać drugiego
-backendu FastAPI podłączonego do tej samej centrali. Aplikacja mobilna powinna wtedy korzystać z
-API Home Assistant albo profil należy przełączyć na Gateway.
-
 Profile są wzajemnie wykluczające dla konkretnego urządzenia. Integracja powinna pokazywać
 jednoznaczny `connection_mode` i diagnostykę właściciela magistrali.
 
@@ -98,6 +88,9 @@ custom_components/thessla_green/
   config_flow.py
   coordinator.py
   api.py
+  direct.py
+  http.py
+  _core/             # framework-independent runtime dołączony do artefaktu HACS
   fan.py
   sensor.py
   binary_sensor.py
@@ -111,16 +104,15 @@ hacs.json
 README.md
 ```
 
-Zalecane jest osobne repozytorium dystrybucyjne integracji HACS, np.
-`thessla-green-home-assistant`. Ten projekt może pozostać źródłem rdzenia i gatewaya. Dzięki temu
-HACS pobiera tylko pliki integracji, a zależności biblioteczne mają niezależne wersjonowanie.
+Artefakt HACS zawiera kopię framework-independent rdzenia, ponieważ HACS kopiuje katalog integracji
+i nie wykonuje `pip install` głównego projektu. Zewnętrzne zależności `pymodbus` i `pyserial` są
+przypięte w `manifest.json`; wersja PyModbus jest zgodna z bieżącą wersją Home Assistant Core.
 
 Wymagania funkcjonalne integracji:
 
 - konfiguracja wyłącznie przez UI (`config_flow`) z testem połączenia i blokadą duplikatów;
-- kreator po teście gatewaya pokazuje potwierdzony model/firmware, endpoint i unit ID Modbus oraz
-  read-only listę portów widocznych na hoście; wybór i otwarcie magistrali pozostają po stronie
-  wcześniej skonfigurowanego gatewaya;
+- kreator domyślnie pokazuje porty widoczne wewnątrz Home Assistanta, wykonuje read-only fingerprint
+  i zapisuje wybrany endpoint; osobny krok pozwala świadomie wybrać zewnętrzny gateway;
 - `manifest.json` z co najmniej domeną, nazwą, wersją, dokumentacją, trackerem błędów i
   `codeowners`; typ integracji: `hub` lub `device` zależnie od ostatecznego modelu;
 - jeden `DataUpdateCoordinator` pobierający snapshot zamiast odpytywania osobno przez każdą
@@ -131,12 +123,13 @@ Wymagania funkcjonalne integracji:
 - encje niedostępne dla funkcji nieobsługiwanych przez dany model/firmware;
 - reautoryzacja, ponowna konfiguracja hosta, tłumaczenia PL/EN, diagnostyka z redakcją sekretów;
 - brak blokującego I/O w pętli Home Assistant oraz prawidłowe wyrejestrowanie subskrypcji;
-- opcjonalny panel boczny osadza lokalny `/ui/` gatewaya, dzięki czemu animacja i sterowanie są
-  współdzielone bez kopiowania logiki API do frontendu HA;
+- panel boczny w Direct HA używa uwierzytelnionego mostka HTTP i snapshotu koordynatora, a w profilu
+  Gateway osadza lokalny `/ui/`;
 - walidacje HACS i Hassfest w CI oraz wersjonowane GitHub Releases.
 
-W profilu Gateway integracja nie implementuje logiki Modbus ani automatyki. Mapuje stabilny
-kontrakt API na natywne encje HA.
+W profilu Gateway integracja mapuje stabilny kontrakt API na natywne encje HA. W profilu Direct
+te same encje korzystają z adaptera implementującego identyczną granicę klienta nad lokalnym
+`GatewayService`, bez uruchamiania FastAPI.
 
 ## FastAPI dla aplikacji Dart/Flutter
 
@@ -293,10 +286,10 @@ tests/
 docs/
 ```
 
-Repozytorium HACS zawiera wyłącznie adapter `custom_components/thessla_green` i jego testy. Jeśli
-w przyszłości profil Direct HA będzie używał wspólnej biblioteki, integracja przypina jej dokładną
-wersję z PyPI w `manifest.json`; nie zależy od kodu znajdującego się tylko w katalogu `src` tego
-repozytorium.
+Repozytorium HACS zawiera adapter oraz wygenerowaną kopię rdzenia w
+`custom_components/thessla_green/_core`. Dzięki temu czysta instalacja HACS nie zależy od ręcznego
+instalowania pakietu z katalogu `src`. Test wydania sprawdza obecność wymaganych modułów i wersji
+zależności.
 
 ## Dane i wdrożenie
 
@@ -315,7 +308,8 @@ procesu. Kopia konfiguracji nie może zawierać tokenów bez szyfrowania.
 - tylko jeden proces posiada Modbus, co jest testowane także w dokumentacji wdrożenia;
 - polecenia są idempotentne, audytowalne i kończą się potwierdzeniem albo jawnym timeoutem;
 - kontrakt OpenAPI jest wersjonowany i testowany względem klienta Dart oraz adaptera HA;
-- utrata Google Home, Home Assistant lub aplikacji mobilnej nie zatrzymuje gatewaya ani automatyki.
+- utrata Google Home lub aplikacji mobilnej nie zatrzymuje lokalnego właściciela Modbus; w profilu
+  Gateway awaria HA również nie zatrzymuje gatewaya.
 
 ## Źródła wymagań integracyjnych
 

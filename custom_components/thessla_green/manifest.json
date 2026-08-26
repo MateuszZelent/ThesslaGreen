@@ -12,6 +12,12 @@
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/MateuszZelent/ThesslaGreen/issues",
-  "requirements": [],
-  "version": "0.2.15"
+  "loggers": [
+    "pymodbus"
+  ],
+  "requirements": [
+    "pymodbus==3.13.1",
+    "pyserial==3.5"
+  ],
+  "version": "0.3.0"
 }

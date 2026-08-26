@@ -17,23 +17,24 @@ Projekt ma zapewnić:
 
 ## Stan obecny
 
-Repozytorium zawiera działający szkielet rdzenia, read-only discovery RTU/TCP, pierwszy zakres
-sterowania oraz adapter HACS korzystający z gatewaya FastAPI. Na testowanym urządzeniu discovery
+Repozytorium zawiera działający rdzeń, read-only discovery RTU/TCP, sterowanie z read-backiem
+oraz samodzielną integrację HACS otwierającą Modbus bezpośrednio z Home Assistanta. Opcjonalny
+gateway FastAPI pozostaje dostępny dla aplikacji mobilnej. Na testowanym urządzeniu discovery
 potwierdziło AirPack4, firmware 4.85.16 i Modbus unit 10 przez stabilny alias USB-RS485. Przed
 sterowaniem nadal trzeba wykonać pojedynczy, kontrolowany test read-back na tym urządzeniu.
 
 ## Architektura
 
 ```text
-Rekuperator <--Modbus--> rdzeń + gateway FastAPI <--REST/WS--> Flutter
-                                  |
-                                  +--> integracja HACS --> Home Assistant --> Google Home
+Profil HACS:    Google Home -> Home Assistant/HACS -> rdzeń -> Modbus -> Rekuperator
+Profil mobilny: Flutter -> gateway FastAPI -> rdzeń -> Modbus -> Rekuperator
 ```
 
-Zalecany profil wdrożenia używa gatewaya jako jedynego właściciela połączenia Modbus. Aplikacja
-mobilna i integracja HACS korzystają z tego samego API i potwierdzonego modelu stanu, dzięki czemu
-nie konkurują o port szeregowy. Opcjonalny profil bezpośredni Home Assistant jest możliwy później,
-ale jest wzajemnie wykluczający z gatewayem dla tej samej centrali.
+Domyślna instalacja HACS działa samodzielnie: Home Assistant jest jedynym właścicielem portu
+Modbus i nie wymaga URL, tokenu ani procesu FastAPI. Jeżeli równocześnie potrzebne jest API dla
+aplikacji mobilnej, należy uruchomić profil gatewaya i w kreatorze HACS wybrać ten sam gateway.
+Profile są wzajemnie wykluczające dla jednego fizycznego portu — zawsze istnieje dokładnie jeden
+właściciel Modbus.
 
 Szczegóły: [architektura](docs/ARCHITECTURE.md), [plan prac](docs/ROADMAP.md),
 [pierwszy zakres sterowania](docs/CONTROL.md), [panel UI i HACS](docs/UI.md),
@@ -235,28 +236,41 @@ opcjonalnie `THESSLA_AIRFLOW_OBSERVATION_INTERVAL_SECONDS`. Odpowiedź polecenia
 na read-backu rejestru, a `airflow_observation` dodatkowo zawiera próbki i informację, czy przepływ
 zmienił się w zadanym oknie. Przepływ jest sygnałem reakcji w m³/h, nie pomiarem RPM.
 
-Home Assistant powinien łączyć się z tym API przez integrację HACS. Nie uruchamiaj równolegle
-bezpośredniej integracji HA Modbus na tym samym porcie szeregowym — jeden proces musi być właścicielem
+FastAPI pozostaje opcjonalnym profilem dla aplikacji mobilnej lub instalacji, w której osobny
+proces ma być właścicielem Modbus. Domyślna instalacja HACS może zamiast tego otworzyć port
+bezpośrednio wewnątrz Home Assistanta. W obu profilach dokładnie jeden proces jest właścicielem
 magistrali.
 
 ### HACS
 
 W HACS dodaj to repozytorium jako **Custom repository** typu **Integration**, zainstaluj wersję
-`0.2.15`, zrestartuj Home Assistant i dodaj integrację **Thessla Green** przez UI. Kreator
-potwierdza model, firmware, numer seryjny, adres/unit ID Modbus oraz porty widoczne na hoście
-gatewaya. W konfiguracji podaj URL gatewaya, np. `http://127.0.0.1:8000` (albo adres hosta
-gatewaya widoczny z kontenera HA) i opcjonalny token API. Wyłącz bezpośrednią integrację Modbus
-dla tej samej centrali — gateway pozostaje jedynym właścicielem portu.
+`0.3.0`, zrestartuj Home Assistant i dodaj integrację **Thessla Green** przez UI. Wybierz:
 
-Po konfiguracji integracja dodaje panel **Thessla Green** do bocznego menu Home Assistant. Panel
-osadza tę samą animację i sterowanie, które gateway udostępnia pod `/ui/`; dzięki temu widoki nie
-rozjeżdżają się, a zapis nadal przechodzi przez jeden gateway i jego read-back. Jeśli HA działa
-po HTTPS, gateway również musi być dostępny po HTTPS, inaczej przeglądarka zablokuje osadzony panel.
+- **Bezpośredni Modbus (zalecane)** — kreator pokaże porty widoczne w Home Assistant, wykona
+  read-only fingerprint i zapisze port, unit ID, baudrate oraz timeout. Nie podaje się URL ani
+  tokenu i nie uruchamia FastAPI;
+- **Zewnętrzny gateway FastAPI** — zachowany tryb zaawansowany, wymagający wcześniej uruchomionej
+  usługi oraz jej URL/tokena.
+
+Wyłącz starą integrację Modbus i każdy zewnętrzny gateway używający tego samego adaptera przed
+wyborem trybu bezpośredniego. Dla Home Assistant Container/VM port USB musi być widoczny wewnątrz
+kontenera lub maszyny wirtualnej, najlepiej jako `/dev/serial/by-id/...`.
+
+Po konfiguracji integracja dodaje panel **Thessla Green** do bocznego menu Home Assistant. W trybie
+bezpośrednim animacja używa uwierzytelnionego API HA i wspólnego koordynatora, więc nie potrzebuje
+osobnego serwera ani tokenu. W trybie gatewaya nadal osadza publiczny panel `/ui/`; przy HTTPS po
+stronie HA gateway również musi być dostępny po HTTPS.
 
 Po dodaniu integracji HACS do dashboardu można dodać encję `fan` rekuperatora. Suwak pokazuje
 potwierdzoną nastawę procentową, a atrybuty encji zawierają oba setpointy (`manual` i `temporary`),
 chwilowy przepływ nawiewu/wywiewu w m³/h oraz ostatni wynik read-backu. PDF protokołu nie raportuje
 RPM, dlatego reakcję wentylatorów oceniamy przez przepływy 256/257, odświeżane domyślnie co 5 sekund.
+
+Bezpłatna integracja z Google Home nie wymaga licencji do tego projektu ani subskrypcji Home
+Assistant Cloud. Wymaga ręcznej konfiguracji oficjalnej integracji `google_assistant`, publicznego
+HTTPS i projektu Google Home Cloud-to-Cloud. Dokładna procedura znajduje się w
+[docs/GOOGLE_HOME.md](docs/GOOGLE_HOME.md). Nie należy instalować `Google Assistant SDK`, ponieważ
+jest to integracja do wysyłania poleceń w przeciwnym kierunku.
 
 Konfigurację należy przechowywać w `.env` utworzonym na podstawie `.env.example`. Plik `.env` nie trafia do Git.
 

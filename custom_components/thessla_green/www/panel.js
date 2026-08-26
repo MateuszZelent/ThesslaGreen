@@ -3,9 +3,8 @@
 /**
  * Sidebar panel for the Home Assistant adapter.
  *
- * The gateway remains the single Modbus owner.  This panel deliberately embeds
- * the same local-first UI served by the gateway, so its animation and controls
- * stay identical to the standalone dashboard and do not duplicate API logic.
+ * In direct mode Home Assistant owns Modbus and the iframe uses HA's
+ * authenticated API bridge. In gateway mode it embeds the gateway UI.
  */
 (function registerThesslaGreenPanel() {
   const TAG_NAME = "thessla-green-panel";
@@ -18,13 +17,17 @@
     constructor() {
       super();
       this._panel = null;
+      this._hass = null;
+      this._frame = null;
       this._frameUrl = null;
       this._shadow = this.attachShadow({ mode: "open" });
+      this._handleMessage = this._handleMessage.bind(this);
     }
 
     /** Home Assistant's custom-panel loader uses this method when available. */
     setProperties(properties) {
       this._panel = properties?.panel || this._panel;
+      this._hass = properties?.hass || this._hass;
       this._render();
     }
 
@@ -33,15 +36,30 @@
       this._render();
     }
 
+    set hass(value) {
+      this._hass = value;
+    }
+
     connectedCallback() {
+      window.addEventListener("message", this._handleMessage);
       this._render();
+    }
+
+    disconnectedCallback() {
+      window.removeEventListener("message", this._handleMessage);
     }
 
     _config() {
       return this._panel?.config?._panel_custom?.config || {};
     }
 
-    _gatewayUiUrl() {
+    _panelUiUrl() {
+      if (this._config().connection_type === "direct") {
+        const entryId = encodeURIComponent(String(this._config().entry_id || ""));
+        return entryId
+          ? `/api/thessla_green/frontend/direct/index.html?entry_id=${entryId}`
+          : "";
+      }
       const configured = String(this._config().gateway_url || "").trim();
       if (!configured) {
         return "";
@@ -57,8 +75,49 @@
       }
     }
 
+    async _handleMessage(event) {
+      if (
+        event.origin !== window.location.origin
+        || event.source !== this._frame?.contentWindow
+        || this._config().connection_type !== "direct"
+      ) return;
+      const message = event.data || {};
+      if (message.type !== "thessla-green-request") return;
+      const entryId = String(this._config().entry_id || "");
+      if (!entryId || message.entryId !== entryId || !this._hass?.callApi) return;
+      const suffixes = {
+        "/api/v1/state": "state",
+        "/api/v1/control/options": "control/options",
+        "/api/v1/discovery/serial-ports": "discovery/serial-ports",
+        "/api/v1/commands": "commands",
+      };
+      const suffix = suffixes[message.path];
+      if (!suffix) return;
+      try {
+        const body = await this._hass.callApi(
+          String(message.method || "GET").toUpperCase(),
+          `thessla_green/${encodeURIComponent(entryId)}/${suffix}`,
+          message.body || undefined,
+        );
+        event.source.postMessage({
+          type: "thessla-green-response",
+          requestId: message.requestId,
+          ok: true,
+          body,
+        }, event.origin);
+      } catch (error) {
+        event.source.postMessage({
+          type: "thessla-green-response",
+          requestId: message.requestId,
+          ok: false,
+          status: Number(error?.status_code || error?.status || 500),
+          detail: String(error?.body?.message || error?.message || "Błąd Home Assistanta"),
+        }, event.origin);
+      }
+    }
+
     _render() {
-      const url = this._gatewayUiUrl();
+      const url = this._panelUiUrl();
       if (url === this._frameUrl && this._shadow.childElementCount) {
         return;
       }
@@ -148,12 +207,14 @@
       name.textContent = this._config().title || "Thessla Green";
       const sub = document.createElement("div");
       sub.className = "sub";
-      sub.textContent = "panel gatewaya · lokalne sterowanie";
+      sub.textContent = this._config().connection_type === "direct"
+        ? "Home Assistant · Modbus direct"
+        : "panel gatewaya · lokalne sterowanie";
       copy.append(name, sub);
       title.append(mark, copy);
       header.appendChild(title);
 
-      if (url) {
+      if (url && this._config().connection_type !== "direct") {
         const link = document.createElement("a");
         link.href = url;
         link.target = "_blank";
@@ -167,8 +228,11 @@
         const empty = document.createElement("div");
         empty.className = "empty";
         const strong = document.createElement("strong");
-        strong.textContent = "Brak adresu panelu gatewaya";
-        empty.append(strong, document.createTextNode("Otwórz konfigurację integracji i ustaw poprawny adres FastAPI."));
+        const direct = this._config().connection_type === "direct";
+        strong.textContent = direct ? "Brak identyfikatora integracji" : "Brak adresu panelu gatewaya";
+        empty.append(strong, document.createTextNode(direct
+          ? "Przeładuj integrację Thessla Green w Home Assistant."
+          : "Otwórz konfigurację integracji i ustaw poprawny adres FastAPI."));
         shell.appendChild(empty);
       } else {
         const frame = document.createElement("iframe");
@@ -177,6 +241,7 @@
         frame.loading = "eager";
         frame.referrerPolicy = "no-referrer";
         frame.allow = "fullscreen";
+        this._frame = frame;
         shell.appendChild(frame);
       }
       this._shadow.replaceChildren(style, shell);

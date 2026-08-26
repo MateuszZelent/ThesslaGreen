@@ -2,8 +2,26 @@
   "config": {
     "step": {
       "user": {
-        "title": "Połącz gateway Thessla Green",
-        "description": "Podaj adres lokalnego gatewaya FastAPI. Home Assistant nie komunikuje się bezpośrednio z Modbus.",
+        "title": "Połącz centralę Thessla Green",
+        "description": "Wybierz, który proces będzie jedynym właścicielem połączenia Modbus.",
+        "menu_options": {
+          "direct": "Bezpośredni Modbus (zalecane)",
+          "gateway": "Zewnętrzny gateway FastAPI"
+        }
+      },
+      "direct": {
+        "title": "Bezpośrednie połączenie Modbus RTU",
+        "description": "Porty wykryte przez Home Assistant:\n{serial_ports}\n\nWybierz stabilną ścieżkę /dev/serial/by-id, jeśli jest dostępna. Kreator wykona wyłącznie odczyty identyfikacyjne.",
+        "data": {
+          "serial_port": "Port szeregowy",
+          "unit_id": "ID urządzenia Modbus",
+          "baudrate": "Prędkość transmisji",
+          "timeout": "Limit czasu odpowiedzi (s)"
+        }
+      },
+      "gateway": {
+        "title": "Połącz zewnętrzny gateway",
+        "description": "Użyj tego trybu tylko wtedy, gdy osobny gateway FastAPI już działa i jest jedynym właścicielem Modbus.",
         "data": {
           "url": "Adres gatewaya",
           "token": "Token API (opcjonalnie)"
@@ -11,14 +29,12 @@
       },
       "confirm": {
         "title": "Wykryto centralę Thessla Green",
-        "description": "Model: {model}\nFirmware: {firmware}\nNumer seryjny: {serial_number}\nAdres Modbus właściciela gatewaya: {endpoint}\nID Modbus: {unit_id}\nPorty szeregowe widoczne na hoście gatewaya:\n{serial_ports}\n\nGateway jest jedynym właścicielem magistrali. HACS pobiera snapshot przez API i nie otwiera Modbus bezpośrednio.",
+        "description": "Model: {model}\nFirmware: {firmware}\nNumer seryjny: {serial_number}\nEndpoint: {endpoint}\nID Modbus: {unit_id}\nPołączenie: {connection}\n\nPo zatwierdzeniu tylko wybrany runtime będzie korzystać z magistrali.",
         "data": {}
       },
       "reauth": {
         "title": "Ponowna autoryzacja gatewaya",
-        "data": {
-          "token": "Token API"
-        }
+        "data": {"token": "Token API"}
       },
       "reconfigure": {
         "title": "Zmień gateway Thessla Green",
@@ -30,14 +46,19 @@
     },
     "error": {
       "invalid_url": "Podaj poprawny adres HTTP lub HTTPS.",
-      "cannot_connect": "Nie można połączyć się z gatewayem lub urządzenie jest offline.",
+      "cannot_connect": "Nie można połączyć się z urządzeniem.",
       "invalid_auth": "Gateway odrzucił token API.",
-      "device_not_found": "Gateway odpowiada, ale nie ma potwierdzonej centrali AirPack. Uruchom discovery i konfigurację gatewaya."
+      "device_not_found": "Urządzenie odpowiedziało, ale nie potwierdzono centrali AirPack.",
+      "port_busy": "Port jest zajęty przez inny proces. Wyłącz starą integrację Modbus lub gateway.",
+      "permission_denied": "Home Assistant nie ma uprawnień do otwarcia portu szeregowego.",
+      "serial_not_found": "Wybrany port szeregowy nie istnieje w środowisku Home Assistanta.",
+      "missing_dependency": "Nie udało się załadować biblioteki PyModbus. Sprawdź dziennik instalacji integracji."
     },
     "abort": {
-      "already_configured": "To urządzenie jest już skonfigurowane.",
+      "already_configured": "Ta centrala jest już skonfigurowana.",
       "reauth_successful": "Autoryzacja została odnowiona.",
       "reconfigure_successful": "Konfiguracja gatewaya została zmieniona.",
+      "reconfigure_via_readd": "Aby zmienić fizyczny port Modbus, usuń wpis i dodaj centralę ponownie.",
       "unknown_error": "Nieznany błąd konfiguracji."
     }
   }
