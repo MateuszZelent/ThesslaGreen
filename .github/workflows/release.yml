@@ -1,0 +1,71 @@
+name: Publish HACS release
+run-name: Publish v${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from manifest.json (for example 0.3.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: thessla-green-release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require the main branch
+        run: test "$GITHUB_REF" = "refs/heads/main"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify release version
+        run: python scripts/verify_release_version.py "${{ inputs.version }}"
+      - name: Install project
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff
+        run: python -m ruff check src tests custom_components scripts
+      - name: Mypy
+        run: python -m mypy src tests
+      - name: Pytest
+        run: python -m pytest -q
+
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+  release:
+    needs: [test, hassfest, hacs]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          tag="v${RELEASE_VERSION#v}"
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "Thessla Green $tag" \
+            --generate-notes

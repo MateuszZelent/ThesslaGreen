@@ -39,7 +39,8 @@ właściciel Modbus.
 Szczegóły: [architektura](docs/ARCHITECTURE.md), [plan prac](docs/ROADMAP.md),
 [pierwszy zakres sterowania](docs/CONTROL.md), [panel UI i HACS](docs/UI.md),
 [mapa rejestrów](docs/REGISTER_MAP.md), [Google Home](docs/GOOGLE_HOME.md) i
-[kontrakt mobilny](docs/MOBILE_API.md).
+[kontrakt mobilny](docs/MOBILE_API.md). Proces tworzenia stabilnych wydań opisuje
+[instrukcja release HACS](docs/RELEASING.md).
 
 ## Proponowany stos
 
