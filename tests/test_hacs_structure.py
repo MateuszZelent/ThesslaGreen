@@ -62,8 +62,10 @@ def test_hacs_registers_one_ui_for_direct_and_gateway_modes() -> None:
     assert "properties?.hass" in panel_source
     assert (INTEGRATION / "www" / "direct" / "index.html").is_file()
     assert (INTEGRATION / "www" / "direct" / "app.js").is_file()
+    assert (INTEGRATION / "www" / "card.js").is_file()
     assert "async_register_static_paths" in init_source
     assert "async_register_built_in_panel" in init_source
+    assert "add_extra_js_url" in init_source
     assert "pymodbus" not in panel_source
 
 
@@ -91,3 +93,17 @@ def test_direct_panel_uses_authenticated_home_assistant_bridge() -> None:
     assert "window.parent.postMessage" in app
     assert "requires_auth = True" in http
     assert "runtime.coordinator.async_send_command" in http
+
+
+def test_lovelace_card_auto_discovers_entry_and_reuses_authenticated_bridge() -> None:
+    card = (INTEGRATION / "www" / "card.js").read_text(encoding="utf-8")
+    http = (INTEGRATION / "http.py").read_text(encoding="utf-8")
+
+    assert 'const CARD_TAG = "thessla-green-card"' in card
+    assert "window.customCards.push" in card
+    assert "getStubConfig()" in card
+    assert "getConfigElement()" in card
+    assert 'this._hass.callApi("GET", "thessla_green/config")' in card
+    assert "thessla-green-request" in card
+    assert "requires_auth = True" in http
+    assert 'url = "/api/thessla_green/config"' in http

@@ -147,3 +147,21 @@ jednego transportu PyModbus. Nie może działać równolegle z inną integracją
 Panel boczny w trybie bezpośrednim pobiera snapshot z uwierzytelnionego endpointu HA i nie wykonuje
 osobnego odczytu Modbus — sprzęt odpytuje wyłącznie coordinator. Polecenia wracają do tego samego
 runtime'u i przechodzą read-back. W trybie zewnętrznym panel nadal osadza UI gatewaya.
+
+### Karta dashboardu
+
+Integracja rejestruje kartę **Thessla Green AirPack** bez ręcznego dodawania zasobu JavaScript.
+W edycji dashboardu wybierz **Dodaj kartę**, wyszukaj jej nazwę i zatwierdź. Przy jednej centrali
+karta sama pobiera identyfikator wpisu przez uwierzytelniony endpoint HA. Pokazuje ten sam schemat,
+kontrolę procentową, tryby pracy i tryby specjalne co panel boczny.
+
+Konfiguracja YAML odpowiadająca selektorowi:
+
+```yaml
+type: custom:thessla-green-card
+height: 1200
+```
+
+Opcjonalne `entry_id` wybiera konkretną centralę w instalacji wielourządzeniowej. Zakres wysokości
+wynosi 620–1600 px. Po pierwszej instalacji albo aktualizacji wykonaj `Ctrl+F5`, jeżeli przeglądarka
+nie załadowała jeszcze nowego modułu karty.

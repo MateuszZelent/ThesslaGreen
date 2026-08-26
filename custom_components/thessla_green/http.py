@@ -10,7 +10,13 @@ from aiohttp import web
 from homeassistant.components.http import KEY_HASS, HomeAssistantView
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .const import DOMAIN
+from .const import (
+    CONF_CONNECTION_TYPE,
+    CONF_URL,
+    CONNECTION_DIRECT,
+    CONNECTION_GATEWAY,
+    DOMAIN,
+)
 
 
 def _runtime(request: web.Request, entry_id: str) -> Any:
@@ -29,6 +35,36 @@ class ThesslaGreenStateView(HomeAssistantView):
     async def get(self, request: web.Request, entry_id: str) -> web.Response:
         runtime = _runtime(request, entry_id)
         return self.json(runtime.coordinator.data or {})
+
+
+class ThesslaGreenFrontendConfigView(HomeAssistantView):
+    """Return non-secret card configuration for loaded integration entries."""
+
+    url = "/api/thessla_green/config"
+    name = "api:thessla_green:frontend-config"
+    requires_auth = True
+
+    async def get(self, request: web.Request) -> web.Response:
+        hass = request.app[KEY_HASS]
+        entries: list[dict[str, str]] = []
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            configured = entry.data.get(CONF_CONNECTION_TYPE)
+            connection_type = (
+                str(configured)
+                if configured in {CONNECTION_DIRECT, CONNECTION_GATEWAY}
+                else CONNECTION_GATEWAY
+                if CONF_URL in entry.data
+                else CONNECTION_DIRECT
+            )
+            entries.append(
+                {
+                    "entry_id": entry.entry_id,
+                    "title": entry.title,
+                    "connection_type": connection_type,
+                    "gateway_url": str(entry.data.get(CONF_URL, "")),
+                }
+            )
+        return self.json({"entries": entries})
 
 
 class ThesslaGreenOptionsView(HomeAssistantView):
@@ -82,6 +118,7 @@ class ThesslaGreenCommandView(HomeAssistantView):
 
 
 VIEWS = (
+    ThesslaGreenFrontendConfigView,
     ThesslaGreenStateView,
     ThesslaGreenOptionsView,
     ThesslaGreenSerialPortsView,

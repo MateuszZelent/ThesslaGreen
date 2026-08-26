@@ -38,6 +38,7 @@ from .http import VIEWS
 _LOGGER = logging.getLogger(__name__)
 _FRONTEND_URL = "/api/thessla_green/frontend"
 _PANEL_PREFIX = "thessla-green"
+_CARD_MODULE_URL = f"{_FRONTEND_URL}/card.js?v=0.3.0-card1"
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -101,6 +102,9 @@ async def _async_register_frontend_panel(
             [StaticPathConfig(_FRONTEND_URL, str(frontend_dir), cache_headers=False)]
         )
         integration_data["frontend_static_registered"] = True
+    if not integration_data.get("frontend_card_registered"):
+        frontend.add_extra_js_url(hass, _CARD_MODULE_URL)
+        integration_data["frontend_card_registered"] = True
 
     panel_path = _panel_url_path(entry)
     frontend.async_register_built_in_panel(

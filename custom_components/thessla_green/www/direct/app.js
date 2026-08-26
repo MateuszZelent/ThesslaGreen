@@ -1,6 +1,9 @@
 const HA_ENTRY_ID = new URLSearchParams(window.location.search).get("entry_id") || "";
+const IS_DASHBOARD_CARD = new URLSearchParams(window.location.search).get("view") === "card";
 const IS_HOME_ASSISTANT = Boolean(HA_ENTRY_ID && window.parent !== window);
 const pendingHomeAssistantRequests = new Map();
+
+if (IS_DASHBOARD_CARD) document.documentElement.classList.add("dashboard-card");
 
 window.addEventListener("message", (event) => {
   if (!IS_HOME_ASSISTANT || event.origin !== window.location.origin || event.source !== window.parent) return;

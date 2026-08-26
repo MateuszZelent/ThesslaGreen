@@ -22,6 +22,23 @@ Green integration against the same serial adapter at the same time.
 6. Open **Thessla Green** in the sidebar. The bundled animation uses authenticated Home Assistant
    API calls; it does not need a token or a separate HTTP port.
 
+## Dashboard card
+
+After restarting Home Assistant, edit any dashboard and select **Add card**. Search for
+**Thessla Green AirPack**. The card automatically selects the configured AirPack and embeds the
+same live airflow diagram, fan-speed control, operating modes and special-mode buttons as the
+sidebar panel.
+
+If the visual card picker still has an older frontend cache, reload the browser with `Ctrl+F5`.
+The equivalent manual YAML is:
+
+```yaml
+type: custom:thessla-green-card
+height: 1200
+```
+
+`height` accepts 620–1600 pixels. With multiple integration entries, add the optional `entry_id`.
+
 If the port is not listed, it is not visible inside the Home Assistant runtime. Map the USB device
 to the container/VM or fix host permissions before retrying. A `port_busy` error means another
 process still owns the adapter.

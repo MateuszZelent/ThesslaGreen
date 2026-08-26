@@ -279,6 +279,16 @@ pre { max-height: 340px; overflow: auto; color: var(--blue-300); font-size: .78r
 .toast { position: fixed; right: 18px; bottom: 18px; max-width: min(420px, calc(100% - 36px)); padding: 13px 15px; border: 1px solid var(--danger-border); border-radius: var(--radius-control); color: var(--text); background: var(--danger-surface); opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s; }
 .toast.show { opacity: 1; transform: translateY(0); }
 
+/* Lovelace card profile: keep the full animation and controls, remove only
+   the standalone page chrome already supplied by the dashboard. */
+.dashboard-card body { background: var(--bg); }
+.dashboard-card .shell { width: 100%; padding: 0; }
+.dashboard-card .topbar, .dashboard-card .footer { display: none; }
+.dashboard-card .discovery-panel { display: none !important; }
+.dashboard-card .tabs { margin: 12px 12px 14px; }
+.dashboard-card .tab-panel { padding: 0 12px 12px; }
+.dashboard-card .panel { border-radius: var(--radius-card); }
+
 /* Discovery, navigation tabs and telemetry table */
 .discovery-panel { margin-bottom: 18px; }
 .discovery-panel .panel-heading { margin-bottom: 8px; }
@@ -339,6 +349,7 @@ pre { max-height: 340px; overflow: auto; color: var(--blue-300); font-size: .78r
   .parameters-heading { align-items: flex-start; flex-direction: column; }
   .special-mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .special-mode-description { grid-template-columns: 1fr; gap: 8px; }
+  .dashboard-card .shell { width: 100%; padding-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
