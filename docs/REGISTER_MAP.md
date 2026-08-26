@@ -38,6 +38,14 @@ na `-3276,8°C`.
 | EKO/KOMFORT (`comfortModePanel`) | holding / 03 | `0x10D0` | 4304 | 0 EKO, 1 KOMFORT | R/W |
 | Dezaktywacja bypassu (`bypassOff`) | holding / 03 | `0x10E0` | 4320 | 0 aktywny, 1 nieaktywny | R/W |
 | ON/OFF centrali (`onOffPanelMode`) | holding / 03 | `0x1123` | 4387 | 0 OFF, 1 ON | R/W |
+| Aktywacja chwilowa: tryb (`cfgMode1`) | holding / 16 | `0x1130` | 4400 | wartość 2 | R/W |
+| Aktywacja chwilowa: intensywność | holding / 16 | `0x1131` | 4401 | 10–100% | R/W |
+| Aktywacja chwilowa: flaga | holding / 16 | `0x1132` | 4402 | wartość 1 | R/W |
+
+Aktywacja trybu chwilowego wymaga według producenta jednego zapisu Function 16 całego bloku
+`4400–4402` z wartościami `[2, intensywność, 1]`. Nie wolno zastępować tej operacji trzema
+niezależnymi zapisami. Publiczna mapa z PDF nie zawiera rejestru czasu trwania trybu chwilowego;
+czas pozostaje ustawieniem sterownika/panelu Air++.
 
 ## Tryby specjalne
 
@@ -49,7 +57,8 @@ dzwonkowym, `4` wietrzenie przełącznikiem ON/OFF, `5` higrostat, `6` czujnik j
 ## Zasady zapisu
 
 - Automatyczne wykrywanie używa wyłącznie funkcji odczytu `04` i nie zmienia stanu centrali.
-- Pierwszy zapis wykonujemy pojedynczo, z odczytem wartości przed i po.
+- Zwykły zapis wykonujemy pojedynczo, z odczytem wartości przed i po; udokumentowany blok
+  aktywacji chwilowej zapisujemy atomowo Function 16 i potwierdzamy odczytem `4208–4211`.
 - Nie zapisujemy do adresów nieznanych ani do rejestru poziomu dostępu podczas skanowania.
 - Semantykę i zakres należy ponownie potwierdzić dla konkretnego modelu oraz firmware przed
   włączeniem produkcyjnego sterowania.

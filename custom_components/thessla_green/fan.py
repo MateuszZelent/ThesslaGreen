@@ -81,7 +81,7 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         # In temporary mode the slider edits the temporary setpoint. In every
         # other mode it explicitly selects manual mode before changing 4210.
         if self.values.get("mode") == 2:
-            await self.async_send_command("set_temporary_fan_speed", percentage=percentage)
+            await self.async_send_command("activate_temporary_mode", percentage=percentage)
         else:
             await self.async_send_command("set_mode", mode="manual")
             await self.async_send_command("set_fan_speed", percentage=percentage)

@@ -12,7 +12,8 @@ Otwórz `http://127.0.0.1:8000/`. Panel:
 
 - pobiera jeden snapshot `/api/v1/state` i opcje `/api/v1/control/options`;
 - odświeża stan co pięć sekund;
-- pozwala zmienić tryb, nastawę manualną/chwilową, tryb specjalny oraz ON/OFF;
+- pozwala zmienić tryb **Automatyczny**, **Ręczny** i **Chwilowy**, nastawę
+  ręczną/chwilową, tryb specjalny oraz ON/OFF;
 - wysyła typowane komendy z `request_id` i `expected_revision`;
 - pokazuje read-back (`requested_value`, `confirmed_value`, numer audytu);
 - pokazuje chwilowy przepływ nawiewu i wywiewu jako sygnał fizycznej reakcji centrali.
@@ -27,6 +28,15 @@ Gateway wykona wtedy kolejne read-only próbki co `THESSLA_AIRFLOW_OBSERVATION_I
 i zwróci `changed_within_window`, `observation_window_seconds` oraz `samples`. Read-back nastawy
 pozostaje niezależnym, wymaganym potwierdzeniem zapisu.
 
+W panelu suwak działa zależnie od wybranego trybu. Dla **Ręcznego** zapisuje rejestr 4210,
+a dla **Chwilowego** atomowo aktywuje blok `4400–4402` z wybraną intensywnością. Czas trwania
+pochodzi z ustawień Air++ - publiczny protokół nie udostępnia osobnego rejestru czasu. Jeżeli
+wybrany jest **Automatyczny**, przycisk wyraźnie informuje, że zapis nastawy najpierw przełączy
+centralę na tryb ręczny. Panel przyjmuje wybrany tryb dopiero po potwierdzonym snapshotcie.
+Przed wysłaniem komendy panel pobiera świeży snapshot, aby zwykły polling nie powodował
+fałszywego konfliktu rewizji. Jeśli inny klient zmieni stan w tym samym momencie, gateway nadal
+odrzuca zapis i panel pokazuje szczegóły konfliktu.
+
 Historia snapshotów jest dostępna dla klienta mobilnego przez
 `GET /api/v1/devices/{device_id}/telemetry?from=&to=&limit=`. Gateway zapisuje ją lokalnie w
 SQLite (`THESSLA_DATABASE_URL`), z ograniczoną retencją; awaria zapisu historii nie blokuje
@@ -34,6 +44,10 @@ odczytu ani sterowania.
 
 Panel nie raportuje RPM, bo dokument protokołu udostępnia przepływ w m³/h, a nie prędkość
 obrotową wentylatora. Wymaga tego samego jedynego gatewaya co HACS i klient mobilny.
+
+Adresy zasobów panelu są wersjonowane razem z wydaniem gatewaya, więc po aktualizacji przeglądarka
+nie powinna użyć starego JavaScriptu z cache. Po zmianie wersji zrestartuj gateway i wykonaj twarde
+odświeżenie strony.
 
 Jeżeli ustawiono `THESSLA_API_TOKEN`, wpisz go w polu tokenu panelu. Jest przechowywany tylko w
 `localStorage` tej przeglądarki i wysyłany jako nagłówek Bearer.

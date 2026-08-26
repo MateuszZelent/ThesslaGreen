@@ -25,6 +25,12 @@ class ModernPymodbusClient:
         assert (address, value, device_id) == (4210, 60, 10)
         return type("Response", (), {"address": address})()
 
+    async def write_registers(
+        self, address: int, values: list[int], *, device_id: int
+    ) -> object:
+        assert (address, values, device_id) == (4400, [2, 70, 1], 10)
+        return type("Response", (), {"address": address})()
+
 
 class LegacyPymodbusClient:
     connected = True
@@ -44,6 +50,7 @@ def test_transport_uses_keyword_count_with_modern_pymodbus() -> None:
 
         assert await transport.read_input_registers(0, 5, 10) == (4, 84, 0, 0, 2)
         await transport.write_holding_register(4210, 60, 10)
+        await transport.write_holding_registers(4400, (2, 70, 1), 10)
 
     asyncio.run(run())
 

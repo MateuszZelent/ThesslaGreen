@@ -242,7 +242,7 @@ magistrali.
 ### HACS
 
 W HACS dodaj to repozytorium jako **Custom repository** typu **Integration**, zainstaluj wersję
-`0.2.0`, zrestartuj Home Assistant i dodaj integrację **Thessla Green** przez UI. W konfiguracji
+`0.2.1`, zrestartuj Home Assistant i dodaj integrację **Thessla Green** przez UI. W konfiguracji
 podaj URL gatewaya, np. `http://127.0.0.1:8000` (albo adres hosta gatewaya widoczny z kontenera HA)
 i opcjonalny token API. Wyłącz bezpośrednią integrację Modbus dla tej samej centrali — gateway
 pozostaje jedynym właścicielem portu.

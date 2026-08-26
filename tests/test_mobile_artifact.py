@@ -15,6 +15,9 @@ def test_flutter_screen_uses_the_typed_gateway_client() -> None:
     assert "runApp" in source
     assert "ThesslaGatewayClient" in source
     assert "sendCommand" in source
+    assert "activate_temporary_mode" in source
+    assert "Automatyczny" in source
+    assert "Chwilowy" in source
     assert "potwierdzone read-back" in source
     assert "_state = response.state" in source
 

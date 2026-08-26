@@ -146,6 +146,7 @@ class AirPackProbe:
                     "mode",
                     "season",
                     "manual_fan_speed",
+                    "temporary_fan_speed",
                     "special_mode",
                     "comfort_mode",
                     "bypass_off",

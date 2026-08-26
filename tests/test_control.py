@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 
 import pytest
 
@@ -24,6 +25,7 @@ class FakeTransport:
         self.endpoint = TransportEndpoint(TransportKind.SERIAL, "/dev/ttyTEST")
         self.registers: dict[int, int] = {}
         self.writes: list[tuple[int, int, int]] = []
+        self.write_blocks: list[tuple[int, tuple[int, ...], int]] = []
         self.mismatch = mismatch
 
     async def connect(self) -> None:
@@ -38,10 +40,10 @@ class FakeTransport:
     async def read_holding_registers(
         self, address: int, count: int, unit_id: int
     ) -> tuple[int, ...]:
-        value = self.registers.get(address, 0)
+        values = tuple(self.registers.get(address + offset, 0) for offset in range(count))
         if self.mismatch and address in self.registers:
-            value += 1
-        return (value,) + tuple(0 for _ in range(count - 1))
+            values = (values[0] + 1, *values[1:])
+        return values
 
     async def read_coils(self, address: int, count: int, unit_id: int) -> tuple[bool, ...]:
         return tuple(False for _ in range(count))
@@ -54,6 +56,15 @@ class FakeTransport:
     async def write_holding_register(self, address: int, value: int, unit_id: int) -> None:
         self.writes.append((address, value, unit_id))
         self.registers[address] = value
+
+    async def write_holding_registers(
+        self, address: int, values: Sequence[int], unit_id: int
+    ) -> None:
+        normalized = tuple(values)
+        self.write_blocks.append((address, normalized, unit_id))
+        if address == 4400 and len(normalized) == 3 and normalized[2] == 1:
+            self.registers[4208] = normalized[0]
+            self.registers[4211] = normalized[1]
 
 
 def test_manual_fan_speed_is_written_and_confirmed() -> None:
@@ -117,6 +128,27 @@ def test_temporary_fan_speed_is_written_and_confirmed() -> None:
     asyncio.run(run())
 
 
+def test_temporary_mode_is_activated_with_one_documented_register_block() -> None:
+    async def run() -> None:
+        transport = FakeTransport()
+        controller = AirPackController(
+            transport,
+            endpoint=transport.endpoint,
+            unit_id=10,
+            identity=DeviceIdentity(model="AirPack4", unit_id=10),
+        )
+
+        result = await controller.activate_temporary_mode(70, source="web")
+
+        assert result.confirmed
+        assert result.command == "activate_temporary_mode"
+        assert result.register == "temporary_activation_speed"
+        assert transport.write_blocks == [(4400, (2, 70, 1), 10)]
+        assert transport.writes == []
+
+    asyncio.run(run())
+
+
 def test_invalid_speed_does_not_write() -> None:
     async def run() -> None:
         transport = FakeTransport()
@@ -131,8 +163,13 @@ def test_invalid_speed_does_not_write() -> None:
             await controller.set_fan_speed(9)
         with pytest.raises(ValueError):
             await controller.set_fan_speed(101)
+        with pytest.raises(ValueError):
+            await controller.activate_temporary_mode(9)
+        with pytest.raises(ValueError, match="activate_temporary_mode"):
+            await controller.set_mode(2)
 
         assert transport.writes == []
+        assert transport.write_blocks == []
 
     asyncio.run(run())
 

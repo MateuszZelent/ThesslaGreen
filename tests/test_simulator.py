@@ -44,6 +44,19 @@ def test_simulator_supports_discovery_control_and_airflow_feedback() -> None:
         assert isinstance(observation, dict)
         assert observation["available"] is True
         assert observation["supply_changed"] is True
+
+        temporary = await gateway.execute_command(
+            "activate_temporary_mode",
+            {"percentage": 70},
+            request_id="simulator-temporary-mode",
+        )
+        temporary_state = temporary["state"]
+        assert isinstance(temporary_state, dict)
+        temporary_values = temporary_state["values"]
+        assert isinstance(temporary_values, dict)
+        assert temporary_values["mode"] == 2
+        assert temporary_values["temporary_fan_speed"] == 70
+        assert transport.write_blocks[-1] == (4400, (2, 70, 1), 10)
         await gateway.stop()
 
     asyncio.run(run())

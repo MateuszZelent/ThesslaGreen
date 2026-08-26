@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <title>Thessla Green Gateway</title>
-    <link rel="stylesheet" href="/ui/styles.css" />
-    <script src="/ui/app.js" defer></script>
+    <link rel="icon" href="/ui/favicon.svg?v=0.2.1" type="image/svg+xml" />
+    <link rel="stylesheet" href="/ui/styles.css?v=0.2.1" />
+    <script src="/ui/app.js?v=0.2.1" defer></script>
   </head>
   <body>
     <main class="shell">
@@ -72,9 +73,12 @@
             <span>Tryb pracy</span>
             <select id="mode" aria-label="Tryb pracy">
               <option value="automatic">Automatyczny</option>
-              <option value="manual">Manualny</option>
+              <option value="manual">Ręczny</option>
               <option value="temporary">Chwilowy</option>
             </select>
+            <small id="mode-description" class="field-help">
+              Centrala dobiera wydajność według własnego harmonogramu.
+            </small>
           </label>
 
           <label class="field">
@@ -87,6 +91,9 @@
           <button id="apply-speed" class="button button-primary" type="button">
             Ustaw nastawę
           </button>
+          <small id="speed-help" class="field-help">
+            W trybie automatycznym zapis nastawy przełączy centralę na manualny.
+          </small>
 
           <div class="divider"></div>
 

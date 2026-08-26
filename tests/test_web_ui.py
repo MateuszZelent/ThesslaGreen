@@ -16,10 +16,16 @@ from thessla_green.protocol.simulator import SimulatedAirPackTransport
 
 def test_local_dashboard_assets_are_packaged() -> None:
     web_dir = Path(__file__).parents[1] / "src" / "thessla_green" / "web"
-    for name in ("index.html", "app.js", "styles.css"):
+    for name in ("index.html", "app.js", "styles.css", "favicon.svg"):
         assert (web_dir / name).is_file()
     assert "/api/v1/state" in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "set_fan_speed" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "activate_temporary_mode" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "refreshAfterConflict" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "refreshSnapshotForCommand" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "mode-description" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "Chwilowy" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "/ui/app.js?v=0.2.1" in (web_dir / "index.html").read_text(encoding="utf-8")
     assert "airflow_observation" in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "run-discovery" in (web_dir / "index.html").read_text(encoding="utf-8")
     assert "/api/v1/discovery" in (web_dir / "app.js").read_text(encoding="utf-8")
@@ -111,7 +117,7 @@ def test_versioned_openapi_artifact_tracks_runtime_routes() -> None:
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
     runtime = create_app().openapi()
 
-    assert artifact["info"]["version"] == runtime["info"]["version"] == "0.2.0"
+    assert artifact["info"]["version"] == runtime["info"]["version"] == "0.2.1"
     assert set(artifact["paths"]) == set(runtime["paths"])
     assert artifact["components"]["schemas"]["CommandRequest"] == runtime["components"][
         "schemas"

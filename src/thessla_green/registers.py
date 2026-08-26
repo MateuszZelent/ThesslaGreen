@@ -100,6 +100,34 @@ REGISTERS: tuple[RegisterDefinition, ...] = (
         "on_off_panel_mode", 4387, RegisterArea.HOLDING, writable=True, minimum=0, maximum=1,
         description="0 off, 1 on",
     ),
+    RegisterDefinition(
+        "temporary_activation_mode",
+        4400,
+        RegisterArea.HOLDING,
+        writable=True,
+        minimum=0,
+        maximum=2,
+        description="cfgMode1; first word of the atomic temporary-mode activation block",
+    ),
+    RegisterDefinition(
+        "temporary_activation_speed",
+        4401,
+        RegisterArea.HOLDING,
+        "%",
+        writable=True,
+        minimum=10,
+        maximum=100,
+        description="temporary airflow used in the atomic activation block",
+    ),
+    RegisterDefinition(
+        "temporary_activation_flag",
+        4402,
+        RegisterArea.HOLDING,
+        writable=True,
+        minimum=0,
+        maximum=1,
+        description="airflowRateChangeFlag; write 1 with mode and speed in one operation",
+    ),
 )
 
 

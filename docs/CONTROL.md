@@ -23,9 +23,9 @@ Rejestr holding `4208` (`0x1070`, `mode`):
 
 | Wartość | Nazwa | Znaczenie |
 |---:|---|---|
-| 0 | `automatic` | harmonogram automatyczny |
-| 1 | `manual` | ręczna intensywność z rejestru 4210 |
-| 2 | `temporary` | tryb chwilowy |
+| 0 | `automatic` | harmonogram automatyczny skonfigurowany w Air++ |
+| 1 | `manual` | ręczna intensywność z rejestru 4210, bez limitu czasu |
+| 2 | `temporary` | chwilowa intensywność przez czas skonfigurowany w Air++ |
 
 ## Intensywność wentylacji
 
@@ -35,6 +35,11 @@ intensywności nie przełącza automatycznie trybu pracy; aplikacja powinna jawn
 
 Rejestr `4211` (`0x1073`, `airFlowRateTemporary`) również przyjmuje `10–100%` i jest nastawą
 używaną, gdy `mode` ma wartość `temporary`. API udostępnia ją jako `set_temporary_fan_speed`.
+
+Samo zapisanie `mode=2` nie jest poprawną aktywacją chwilową. PDF wymaga jednej operacji Function
+16 na rejestrach `4400–4402`: `[2, procent, 1]`. API realizuje ją typowaną komendą
+`activate_temporary_mode`; read-back potwierdza potem tryb i intensywność w `4208–4211`.
+Dokument nie publikuje rejestru czasu trwania - używany jest czas skonfigurowany w Air++.
 
 ## Tryby specjalne
 
@@ -68,6 +73,7 @@ GET  /api/v1/control/options
 POST /api/v1/commands {"type":"set_mode","parameters":{"mode":"manual"}}
 POST /api/v1/commands {"type":"set_fan_speed","parameters":{"percentage":60}}
 POST /api/v1/commands {"type":"set_temporary_fan_speed","parameters":{"percentage":80}}
+POST /api/v1/commands {"type":"activate_temporary_mode","parameters":{"percentage":80}}
 POST /api/v1/commands {"type":"set_special_mode","parameters":{"mode":"fireplace"}}
 POST /api/v1/commands {"type":"set_special_mode","parameters":{"mode":"none"}}
 GET  /api/v1/audit

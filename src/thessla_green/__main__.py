@@ -440,7 +440,14 @@ async def _control(args: argparse.Namespace) -> dict[str, Any]:
         elif args.control_command == "temporary-fan-speed":
             result = await service.set_temporary_fan_speed(args.percentage, source="cli")
         elif args.control_command == "mode":
-            result = await service.set_mode(AirPackMode[args.mode.upper()], source="cli")
+            selected_mode = AirPackMode[args.mode.upper()]
+            if selected_mode is AirPackMode.TEMPORARY:
+                percentage = service.state.values.get("temporary_fan_speed")
+                if not isinstance(percentage, int) or isinstance(percentage, bool):
+                    raise RuntimeError("current temporary fan speed is unavailable")
+                result = await service.activate_temporary_mode(percentage, source="cli")
+            else:
+                result = await service.set_mode(selected_mode, source="cli")
         elif args.control_command == "special-mode":
             names = {name: mode for mode, name in SPECIAL_MODE_NAMES.items()}
             result = await service.set_special_mode(names[args.mode], source="cli")

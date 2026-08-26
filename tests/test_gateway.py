@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,6 +30,7 @@ class FakeGatewayTransport:
             4387: 1,
         }
         self.writes: list[tuple[int, int]] = []
+        self.write_blocks: list[tuple[int, tuple[int, ...]]] = []
 
     async def connect(self) -> None:
         return None
@@ -64,6 +66,15 @@ class FakeGatewayTransport:
         self.writes.append((address, value))
         self.registers[address] = value
 
+    async def write_holding_registers(
+        self, address: int, values: Sequence[int], unit_id: int
+    ) -> None:
+        normalized = tuple(values)
+        self.write_blocks.append((address, normalized))
+        if address == 4400 and len(normalized) == 3 and normalized[2] == 1:
+            self.registers[4208] = normalized[0]
+            self.registers[4211] = normalized[1]
+
 
 def test_gateway_confirms_identity_before_control(tmp_path: Path) -> None:
     async def run() -> None:
@@ -87,6 +98,29 @@ def test_gateway_confirms_identity_before_control(tmp_path: Path) -> None:
         assert len(await gateway.telemetry()) >= 2
         stored_audit = await gateway.stored_audit()
         assert stored_audit[-1]["confirmed_value"] == 60
+        await gateway.stop()
+
+    asyncio.run(run())
+
+
+def test_gateway_atomically_activates_temporary_mode() -> None:
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.SERIAL, "/dev/ttyTEST")
+        transport = FakeGatewayTransport(endpoint)
+        gateway = GatewayService(transport, endpoint=endpoint, unit_id=10)
+        await gateway.start()
+
+        response = await gateway.execute_command(
+            "activate_temporary_mode",
+            {"percentage": 65},
+            request_id="temporary-mode-1",
+        )
+
+        assert response["status"] == "confirmed"
+        assert gateway.state.values["mode"] == 2
+        assert gateway.state.values["temporary_fan_speed"] == 65
+        assert transport.write_blocks == [(4400, (2, 65, 1))]
+        assert transport.writes == []
         await gateway.stop()
 
     asyncio.run(run())

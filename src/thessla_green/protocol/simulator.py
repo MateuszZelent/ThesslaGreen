@@ -71,6 +71,7 @@ class SimulatedAirPackTransport:
         self.response_delay_seconds = response_delay_seconds
         self.readback_offset = readback_offset
         self.writes: list[tuple[int, int, int]] = []
+        self.write_blocks: list[tuple[int, tuple[int, ...], int]] = []
         self._connected = False
         self._input_registers: dict[int, int] = {
             0: int(firmware[0]),
@@ -110,6 +111,9 @@ class SimulatedAirPackTransport:
             4320: 0,
             4330: 0,
             4387: 1 if power else 0,
+            4400: mode,
+            4401: temporary_fan_speed,
+            4402: 0,
         }
         self._validate_initial_registers()
 
@@ -156,6 +160,28 @@ class SimulatedAirPackTransport:
             raise ReadResponseError(f"simulator does not expose holding register {address}")
         self.writes.append((address, value, unit_id))
         self._holding_registers[address] = value + self.readback_offset
+
+    async def write_holding_registers(
+        self, address: int, values: Sequence[int], unit_id: int
+    ) -> None:
+        self._before_request(unit_id)
+        await self._delay()
+        normalized = tuple(int(value) for value in values)
+        if not normalized:
+            raise ValueError("at least one holding register value is required")
+        if any(value < 0 or value > 0xFFFF for value in normalized):
+            raise ValueError("holding register values must be uint16")
+        if any(
+            address + offset not in self._holding_registers
+            for offset in range(len(normalized))
+        ):
+            raise ReadResponseError("simulator does not expose the complete holding register block")
+        self.write_blocks.append((address, normalized, unit_id))
+        for offset, value in enumerate(normalized):
+            self._holding_registers[address + offset] = value + self.readback_offset
+        if address == 4400 and len(normalized) == 3 and normalized[2] == 1:
+            self._holding_registers[4208] = normalized[0] + self.readback_offset
+            self._holding_registers[4211] = normalized[1] + self.readback_offset
 
     def _airflow_registers(self) -> tuple[int, int]:
         if self._holding_registers[4387] == 0:

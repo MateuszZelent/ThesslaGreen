@@ -48,7 +48,7 @@ powoduje niekontrolowanych ponowień ani oscylacji.
 
 Szkielet zawiera już `AirPackController` z walidacją i read-back dla:
 
-- trybu `automatic` / `manual` / `temporary` (4208);
+- trybu `automatic` / `manual` (4208) oraz atomowej aktywacji `temporary` (4400–4402);
 - intensywności manualnej 10–100% (4210);
 - intensywności chwilowej 10–100% (4211);
 - trybów specjalnych, w tym kominka, wietrzenia i otwartych okien (4224);

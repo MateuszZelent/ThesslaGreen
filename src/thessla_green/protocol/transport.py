@@ -79,6 +79,10 @@ class ModbusTransport(Protocol):
 
     async def write_holding_register(self, address: int, value: int, unit_id: int) -> None: ...
 
+    async def write_holding_registers(
+        self, address: int, values: Sequence[int], unit_id: int
+    ) -> None: ...
+
 
 def _is_error(response: Any) -> bool:
     checker = getattr(response, "isError", None)
@@ -267,6 +271,20 @@ class PymodbusTransport:
         )
         if not hasattr(response, "address"):
             raise ReadResponseError("write response did not contain an address")
+
+    async def write_holding_registers(
+        self, address: int, values: Sequence[int], unit_id: int
+    ) -> None:
+        normalized = tuple(int(value) for value in values)
+        if not normalized:
+            raise ValueError("at least one holding register value is required")
+        if any(value < 0 or value > 0xFFFF for value in normalized):
+            raise ValueError("holding register values must be uint16")
+        response = await self._request(
+            "write_registers", address, list(normalized), unit_id=unit_id
+        )
+        if not hasattr(response, "address"):
+            raise ReadResponseError("multi-write response did not contain an address")
 
 
 def ensure_register_count(values: Sequence[int], count: int) -> tuple[int, ...]:

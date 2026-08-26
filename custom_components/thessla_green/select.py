@@ -45,6 +45,14 @@ class ThesslaGreenModeSelect(ThesslaGreenEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         if option not in MODE_OPTIONS:
             raise ValueError(f"unsupported operating mode: {option}")
+        if option == "temporary":
+            percentage = self.values.get("temporary_fan_speed")
+            if not isinstance(percentage, (int, float)) or isinstance(percentage, bool):
+                raise ValueError("temporary fan speed is unavailable")
+            await self.async_send_command(
+                "activate_temporary_mode", percentage=int(percentage)
+            )
+            return
         await self.async_send_command("set_mode", mode=option)
 
 

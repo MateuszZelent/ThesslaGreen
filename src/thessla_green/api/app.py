@@ -80,7 +80,7 @@ def create_app(
 
     app = FastAPI(
         title="Thessla Green Gateway",
-        version="0.2.0",
+        version="0.2.1",
         description="Local-first, read-confirmed control API for AirPack units.",
         lifespan=lifespan,
         dependencies=[Depends(authorize)] if api_token else None,
@@ -191,6 +191,11 @@ def create_app(
         return {
             "fan_speed": {"minimum": 10, "maximum": 100, "unit": "%"},
             "temporary_fan_speed": {"minimum": 10, "maximum": 100, "unit": "%"},
+            "temporary_mode": {
+                "duration_source": "airpack_controller_settings",
+                "duration_writable": False,
+                "activation": "atomic_register_block_4400_4402",
+            },
             "modes": {mode.name.lower(): int(mode) for mode in AirPackMode},
             "special_modes": {
                 name: int(mode) for mode, name in USER_SELECTABLE_SPECIAL_MODES.items()

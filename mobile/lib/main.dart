@@ -33,6 +33,16 @@ class GatewayPage extends StatefulWidget {
 
 class _GatewayPageState extends State<GatewayPage> {
   static const _modeNames = <String>['automatic', 'manual', 'temporary'];
+  static const _modeLabels = <String, String>{
+    'automatic': 'Automatyczny',
+    'manual': 'Ręczny',
+    'temporary': 'Chwilowy',
+  };
+  static const _modeDescriptions = <String, String>{
+    'automatic': 'Centrala pracuje według harmonogramu skonfigurowanego w Air++.',
+    'manual': 'Wybrana intensywność działa bez limitu czasu, aż zmienisz tryb.',
+    'temporary': 'Wybrana intensywność działa przez czas skonfigurowany w Air++.',
+  };
   static const _specialModeNames = <String>[
     'none',
     'hood',
@@ -168,6 +178,13 @@ class _GatewayPageState extends State<GatewayPage> {
 
   Future<void> _setSpeed() async {
     await _run(() async {
+      if (_state?.mode == 2) {
+        await _sendCommand(
+          'activate_temporary_mode',
+          {'percentage': _requestedSpeed.round()},
+        );
+        return;
+      }
       if (_state?.mode != 1) {
         await _sendCommand('set_mode', {'mode': 'manual'});
       }
@@ -260,16 +277,38 @@ class _GatewayPageState extends State<GatewayPage> {
                     value: _selectedMode,
                     decoration: const InputDecoration(labelText: 'Tryb pracy'),
                     items: _modeNames
-                        .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+                        .map(
+                          (name) => DropdownMenuItem(
+                            value: name,
+                            child: Text(_modeLabels[name] ?? name),
+                          ),
+                        )
                         .toList(),
                     onChanged: _busy ? null : (value) {
                       if (value != null) {
-                        unawaited(_run(() => _sendCommand('set_mode', {'mode': value})));
+                        unawaited(
+                          _run(
+                            () => value == 'temporary'
+                                ? _sendCommand(
+                                    'activate_temporary_mode',
+                                    {'percentage': _requestedSpeed.round()},
+                                  )
+                                : _sendCommand('set_mode', {'mode': value}),
+                          ),
+                        );
                       }
                     },
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _modeDescriptions[_selectedMode] ?? 'Wybierz tryb pracy centrali.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 12),
-                  Text('Nastawa wentylatora: ${_requestedSpeed.round()}%'),
+                  Text(
+                    '${_state?.mode == 2 ? 'Nastawa tymczasowa' : 'Nastawa manualna'}: '
+                    '${_requestedSpeed.round()}%',
+                  ),
                   Slider(
                     value: _requestedSpeed,
                     min: 10,
@@ -283,7 +322,13 @@ class _GatewayPageState extends State<GatewayPage> {
                     child: FilledButton.icon(
                       onPressed: _busy || state == null ? null : () => unawaited(_setSpeed()),
                       icon: const Icon(Icons.tune),
-                      label: const Text('Ustaw prędkość manualną'),
+                      label: Text(
+                        state?.mode == 2
+                            ? 'Ustaw prędkość tymczasową'
+                            : state?.mode == 0
+                                ? 'Ustaw i przełącz na manualny'
+                                : 'Ustaw prędkość manualną',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),

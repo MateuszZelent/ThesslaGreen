@@ -279,7 +279,12 @@ class AirPackController:
     async def set_temporary_fan_speed(
         self, percentage: int, *, source: str = "unknown"
     ) -> ControlResult:
-        """Set the documented temporary-mode fan intensity (10..100%)."""
+        """Store the documented temporary-mode fan intensity (10..100%).
+
+        This does not activate the temporary timer. AirPack4 requires the
+        dedicated three-register atomic operation implemented by
+        :meth:`activate_temporary_mode` for that transition.
+        """
 
         return await self._write_and_confirm(
             REGISTERS_BY_KEY["temporary_fan_speed"],
@@ -289,6 +294,92 @@ class AirPackController:
             source=source,
         )
 
+    async def activate_temporary_mode(
+        self, percentage: int, *, source: str = "unknown"
+    ) -> ControlResult:
+        """Atomically activate temporary mode with the requested airflow.
+
+        The vendor protocol requires one function-16 write containing
+        ``[mode=2, airflow, activation_flag=1]`` at 4400..4402. The duration
+        is an Air++/controller setting and is not exposed by the public
+        AirPack4 Modbus map.
+        """
+
+        register = REGISTERS_BY_KEY["temporary_activation_speed"]
+        if self.identity is None:
+            raise IdentityNotConfirmed(
+                "read and confirm the AirPack identity before enabling control"
+            )
+        for feature in ("mode", "temporary_fan_speed"):
+            if not self.capabilities.supports(feature):
+                raise UnsupportedControl(f"device does not advertise capability {feature}")
+        if isinstance(percentage, bool) or not isinstance(percentage, int):
+            raise TypeError("temporary fan speed must be an integer")
+        if not 10 <= percentage <= 100:
+            raise ValueError("temporary fan speed must be in the range 10..100")
+
+        command = "activate_temporary_mode"
+        async with self._write_lock:
+            confirmed_value: int | None = None
+            try:
+                await self.transport.write_holding_registers(
+                    REGISTERS_BY_KEY["temporary_activation_mode"].address,
+                    (int(AirPackMode.TEMPORARY), percentage, 1),
+                    self.unit_id,
+                )
+                mode_block = await self.transport.read_holding_registers(
+                    REGISTERS_BY_KEY["mode"].address,
+                    4,
+                    self.unit_id,
+                )
+                if len(mode_block) != 4:
+                    raise ControlVerificationError(
+                        f"temporary-mode read-back returned {len(mode_block)} values"
+                    )
+                confirmed_mode = int(mode_block[0])
+                confirmed_value = int(mode_block[3])
+                if confirmed_mode != int(AirPackMode.TEMPORARY):
+                    raise ControlVerificationError(
+                        "temporary-mode read-back did not confirm mode 2: "
+                        f"received {confirmed_mode}"
+                    )
+                if confirmed_value != percentage:
+                    raise ControlVerificationError(
+                        "temporary airflow read-back returned "
+                        f"{confirmed_value}, expected {percentage}"
+                    )
+            except Exception as exc:
+                self._record_audit(
+                    source=source,
+                    command=command,
+                    register=register,
+                    requested_value=percentage,
+                    confirmed_value=confirmed_value,
+                    success=False,
+                    error=str(exc),
+                )
+                raise
+
+            event = self._record_audit(
+                source=source,
+                command=command,
+                register=register,
+                requested_value=percentage,
+                confirmed_value=confirmed_value,
+                success=True,
+            )
+            return ControlResult(
+                command=command,
+                register=register.key,
+                address=register.address,
+                requested_value=percentage,
+                confirmed_value=confirmed_value,
+                endpoint=self.endpoint,
+                unit_id=self.unit_id,
+                source=source.strip() or "unknown",
+                audit_sequence=event.sequence,
+            )
+
     async def set_mode(
         self, mode: AirPackMode | int, *, source: str = "unknown"
     ) -> ControlResult:
@@ -296,6 +387,10 @@ class AirPackController:
             selected = AirPackMode(mode)
         except ValueError as exc:
             raise ValueError("mode must be 0 (automatic), 1 (manual), or 2 (temporary)") from exc
+        if selected is AirPackMode.TEMPORARY:
+            raise ValueError(
+                "temporary mode requires activate_temporary_mode with an airflow percentage"
+            )
         return await self._write_and_confirm(
             REGISTERS_BY_KEY["mode"],
             int(selected),

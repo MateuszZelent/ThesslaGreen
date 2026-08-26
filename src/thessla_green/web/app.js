@@ -5,6 +5,12 @@ const state = {
   busy: false,
 };
 
+const MODE_DESCRIPTIONS = {
+  automatic: "Automatyczny: centrala pracuje według harmonogramu skonfigurowanego w Air++.",
+  manual: "Ręczny: wybrana intensywność działa bez limitu czasu, aż zmienisz tryb.",
+  temporary: "Chwilowy: wybrana intensywność działa przez czas skonfigurowany w Air++, potem centrala wraca do automatu.",
+};
+
 const $ = (id) => document.getElementById(id);
 
 function headers() {
@@ -24,6 +30,7 @@ async function request(path, init = {}) {
     const detail = body && (body.detail || body.message) ? body.detail || body.message : response.statusText;
     const error = new Error(`${response.status}: ${detail}`);
     error.status = response.status;
+    error.detail = detail;
     throw error;
   }
   return body;
@@ -37,6 +44,24 @@ function modeName(value) {
   const modes = state.options.modes || {};
   const found = Object.entries(modes).find(([, code]) => Number(code) === Number(value));
   return found ? found[0] : "nieznany";
+}
+
+function updateModeControls(mode) {
+  const normalized = MODE_DESCRIPTIONS[mode] ? mode : "automatic";
+  const temporary = normalized === "temporary";
+  const automatic = normalized === "automatic";
+  $("mode-description").textContent = MODE_DESCRIPTIONS[normalized];
+  $("speed-label").textContent = temporary ? "Nastawa tymczasowa" : "Nastawa manualna";
+  $("apply-speed").textContent = temporary
+    ? "Ustaw nastawę tymczasową"
+    : automatic
+      ? "Ustaw i przełącz na manualny"
+      : "Ustaw nastawę manualną";
+  $("speed-help").textContent = temporary
+    ? "Zastosowanie nastawy atomowo uruchamia tryb chwilowy; publiczny Modbus nie udostępnia ustawienia jego czasu."
+    : automatic
+      ? "Zapisanie wartości najpierw przełączy centralę na tryb manualny."
+      : "Suwak zapisuje nastawę manualną dla trybu manualnego.";
 }
 
 function setConnection(online, message) {
@@ -126,7 +151,9 @@ function render(snapshot) {
   $("extract-airflow").textContent = format(values.extract_airflow);
   $("outdoor-temperature").textContent = format(values.outdoor_temperature, " °C");
   $("revision").textContent = `revision ${snapshot.revision ?? "—"}`;
-  $("mode").value = modeName(mode);
+  const selectedMode = modeName(mode);
+  $("mode").value = selectedMode;
+  updateModeControls(selectedMode);
   const selectedSpeed = mode === 2 ? values.temporary_fan_speed : values.manual_fan_speed;
   if (selectedSpeed !== null && selectedSpeed !== undefined) {
     $("speed").value = selectedSpeed;
@@ -217,14 +244,45 @@ async function refresh() {
   }
 }
 
+async function refreshAfterConflict() {
+  try {
+    const snapshot = await request("/api/v1/state");
+    render(snapshot);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function refreshSnapshotForCommand() {
+  // Keep optimistic concurrency protection, but do not base a click on a
+  // revision that became stale during the five-second telemetry poll. The
+  // form values are intentionally left untouched until the command returns.
+  const snapshot = await request("/api/v1/state");
+  state.snapshot = snapshot;
+}
+
 async function runAction(action) {
   if (state.busy) return;
   state.busy = true;
   action.disabled = true;
   try {
+    if (action.refreshBeforeCommand === true) await refreshSnapshotForCommand();
     await action.handler();
   } catch (error) {
-    toast(error.message);
+    if (typeof action.onError === "function") action.onError(error);
+    if (error.status === 409 && action.refreshOnConflict === true) {
+      const refreshed = await refreshAfterConflict();
+      const detail = typeof error.detail === "string" ? error.detail : error.message;
+      const revisionConflict = detail.startsWith("expected state revision");
+      toast(refreshed
+        ? revisionConflict
+          ? "Stan centrali zmienił się równolegle. Odświeżono potwierdzone wartości — ponów polecenie."
+          : `Gateway odrzucił polecenie: ${detail}`
+        : error.message);
+    } else {
+      toast(error.message);
+    }
   } finally {
     state.busy = false;
     action.disabled = false;
@@ -248,15 +306,27 @@ function bind() {
   $("api-token").value = state.token;
   $("mode").addEventListener("change", (event) => runAction({
     disabled: event.target,
-    handler: () => sendCommand("set_mode", { mode: event.target.value }),
+    refreshBeforeCommand: true,
+    refreshOnConflict: true,
+    handler: () => event.target.value === "temporary"
+      ? sendCommand("activate_temporary_mode", { percentage: Number($("speed").value) })
+      : sendCommand("set_mode", { mode: event.target.value }),
+    onError: () => {
+      if (!state.snapshot) return;
+      const confirmedMode = modeName(state.snapshot.values?.mode);
+      $("mode").value = confirmedMode;
+      updateModeControls(confirmedMode);
+    },
   }));
   $("apply-speed").addEventListener("click", () => runAction({
     disabled: $("apply-speed"),
+    refreshBeforeCommand: true,
+    refreshOnConflict: true,
     handler: async () => {
       const percentage = Number($("speed").value);
       const mode = Number(state.snapshot?.values?.mode);
       if (mode === 2) {
-        await sendCommand("set_temporary_fan_speed", { percentage });
+        await sendCommand("activate_temporary_mode", { percentage });
       } else {
         if (mode !== 1) await sendCommand("set_mode", { mode: "manual" });
         await sendCommand("set_fan_speed", { percentage });
@@ -265,10 +335,14 @@ function bind() {
   }));
   $("apply-special").addEventListener("click", () => runAction({
     disabled: $("apply-special"),
+    refreshBeforeCommand: true,
+    refreshOnConflict: true,
     handler: () => sendCommand("set_special_mode", { mode: $("special-mode").value }),
   }));
   $("power").addEventListener("click", () => runAction({
     disabled: $("power"),
+    refreshBeforeCommand: true,
+    refreshOnConflict: true,
     handler: () => sendCommand("set_power", { enabled: !Boolean(state.snapshot?.values?.power) }),
   }));
 }

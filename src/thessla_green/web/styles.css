@@ -52,6 +52,7 @@ h2 { font-size: 1.35rem; }
 output { color: var(--text); font-weight: 800; }
 select, input[type="range"], .token-field input { width: 100%; }
 select, .token-field input { margin-top: 8px; color: var(--text); background: var(--surface-strong); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; }
+.field-help { display: block; margin-top: 8px; color: var(--muted); font-size: .78rem; line-height: 1.45; }
 input[type="range"] { accent-color: var(--accent-strong); margin-top: 17px; }
 .button-row { gap: 10px; flex-wrap: wrap; }
 .button { border: 1px solid var(--border); border-radius: 10px; padding: 11px 15px; color: var(--text); background: var(--surface-strong); transition: transform .15s, border-color .15s, background .15s; }

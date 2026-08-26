@@ -300,6 +300,13 @@ class GatewayService:
             lambda: self.controller.set_temporary_fan_speed(percentage, source=source)
         )
 
+    async def activate_temporary_mode(
+        self, percentage: int, *, source: str = "gateway"
+    ) -> ControlResult:
+        return await self._execute_control(
+            lambda: self.controller.activate_temporary_mode(percentage, source=source)
+        )
+
     async def set_mode(
         self, mode: AirPackMode | int, *, source: str = "gateway"
     ) -> ControlResult:
@@ -381,6 +388,7 @@ class GatewayService:
         if command_type not in {
             "set_fan_speed",
             "set_temporary_fan_speed",
+            "activate_temporary_mode",
             "set_mode",
             "set_special_mode",
             "set_power",
@@ -635,6 +643,10 @@ class GatewayService:
                 result = await self.set_temporary_fan_speed(
                     self._parse_int(parameters["percentage"], "percentage"), source=source
                 )
+            elif command_type == "activate_temporary_mode":
+                result = await self.activate_temporary_mode(
+                    self._parse_int(parameters["percentage"], "percentage"), source=source
+                )
             elif command_type == "set_mode":
                 raw_mode = parameters["mode"]
                 parsed_mode = (
@@ -642,7 +654,17 @@ class GatewayService:
                     if isinstance(raw_mode, str) and not raw_mode.isdecimal()
                     else AirPackMode(self._parse_int(raw_mode, "mode"))
                 )
-                result = await self.set_mode(parsed_mode, source=source)
+                if parsed_mode is AirPackMode.TEMPORARY:
+                    current_percentage = self._parse_int(
+                        self.state.values["temporary_fan_speed"],
+                        "temporary_fan_speed",
+                    )
+                    result = await self.activate_temporary_mode(
+                        current_percentage,
+                        source=source,
+                    )
+                else:
+                    result = await self.set_mode(parsed_mode, source=source)
             elif command_type == "set_special_mode":
                 raw_mode = parameters["mode"]
                 if isinstance(raw_mode, str) and not raw_mode.isdecimal():

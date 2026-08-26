@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import errno
 import os
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -57,6 +58,11 @@ class FakeAirPackTransport:
         raise AssertionError("discovery must not read discrete inputs")
 
     async def write_holding_register(self, address: int, value: int, unit_id: int) -> None:
+        raise AssertionError("discovery must never write")
+
+    async def write_holding_registers(
+        self, address: int, values: Sequence[int], unit_id: int
+    ) -> None:
         raise AssertionError("discovery must never write")
 
 
