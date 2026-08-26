@@ -54,6 +54,7 @@ The integration creates one coordinated device with:
 
 - a `fan` entity supporting ON/OFF, 10-100% and Polish special-mode presets;
 - Polish `select` options for Automatic/Manual/Temporary and special modes;
+- two writable `number` entities for the manual and temporary 10-100% setpoints;
 - temperature, airflow and demand sensors;
 - physical bypass, FPX and built-in ERV heater binary sensors;
 - the last confirmed command/read-back sensor.
@@ -66,3 +67,41 @@ this purpose.
 The vendor protocol does not expose RPM. Airflow is therefore the physical reaction signal shown
 by the panel. Registers 274/275 provide the panel-compatible target flow, while Constant Flow
 measurements from 256/257 remain separate and unavailable when raw value `0xffff` is reported.
+
+## Scenes, automations and Node-RED
+
+All controls are native Home Assistant entities and do not depend on the graphical card:
+
+| Control | Entity domain | Home Assistant action |
+| --- | --- | --- |
+| Power and active fan percentage | `fan` | `fan.turn_on`, `fan.turn_off`, `fan.set_percentage` |
+| Automatic / Manual / Temporary | `select` | `select.select_option` |
+| Special mode | `select` or fan preset | `select.select_option`, `fan.set_preset_mode` |
+| Stored manual setpoint | `number` | `number.set_value` |
+| Stored temporary setpoint | `number` | `number.set_value` |
+| Clear special mode | `button` | `button.press` |
+
+The exact entity IDs include the configured device name and are visible under **Settings ->
+Devices & services -> Thessla Green -> AirPack**. Do not hard-code the example suffix before
+checking it on the target Home Assistant instance.
+
+Example automation action selecting manual mode and 35%:
+
+```yaml
+actions:
+  - action: number.set_value
+    target:
+      entity_id: number.airpack4_nastawa_reczna_wentylacji
+    data:
+      value: 35
+  - action: select.select_option
+    target:
+      entity_id: select.airpack4_tryb_pracy
+    data:
+      option: Ręczny
+```
+
+For temporary operation, first set `number.airpack4_nastawa_chwilowa_wentylacji`, then select
+`Chwilowy`. Selecting that mode performs the documented atomic activation block and uses the
+duration configured on the physical Air++ controller. The same actions can be called from a
+Node-RED **Action** node.

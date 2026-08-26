@@ -48,6 +48,24 @@ def test_hacs_exposes_built_in_heater_and_bypass_states_from_one_snapshot() -> N
     assert "erv_post_heater_mode" in binary_sensor
 
 
+def test_hacs_exposes_native_entities_for_automation_controls() -> None:
+    init_source = (INTEGRATION / "__init__.py").read_text(encoding="utf-8")
+    fan = (INTEGRATION / "fan.py").read_text(encoding="utf-8")
+    select = (INTEGRATION / "select.py").read_text(encoding="utf-8")
+    number = (INTEGRATION / "number.py").read_text(encoding="utf-8")
+
+    assert "Platform.NUMBER" in init_source
+    assert "FanEntityFeature.SET_SPEED" in fan
+    assert "ThesslaGreenModeSelect" in select
+    assert "ThesslaGreenSpecialModeSelect" in select
+    assert '"manual_fan_speed"' in number
+    assert '"temporary_fan_speed"' in number
+    assert '"set_fan_speed"' in number
+    assert '"set_temporary_fan_speed"' in number
+    assert 'command = "activate_temporary_mode"' in number
+    assert "async_send_command" in number
+
+
 def test_hacs_registers_one_ui_for_direct_and_gateway_modes() -> None:
     panel = INTEGRATION / "www" / "panel.js"
     init_source = (INTEGRATION / "__init__.py").read_text(encoding="utf-8")

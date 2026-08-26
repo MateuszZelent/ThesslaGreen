@@ -26,7 +26,7 @@ def test_local_dashboard_assets_are_packaged() -> None:
     assert "refreshSnapshotForCommand" in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "mode-description" in (web_dir / "index.html").read_text(encoding="utf-8")
     assert "Chwilowy" in (web_dir / "index.html").read_text(encoding="utf-8")
-    assert "/ui/app.js?v=0.3.0" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "/ui/app.js?v=0.3.1" in (web_dir / "index.html").read_text(encoding="utf-8")
     assert 'id="comfort-mode-buttons"' not in (web_dir / "index.html").read_text(encoding="utf-8")
     assert "COMFORT_MODE_DETAILS" not in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "airflow_observation" in (web_dir / "app.js").read_text(encoding="utf-8")
@@ -188,7 +188,7 @@ def test_versioned_openapi_artifact_tracks_runtime_routes() -> None:
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
     runtime = create_app().openapi()
 
-    assert artifact["info"]["version"] == runtime["info"]["version"] == "0.3.0"
+    assert artifact["info"]["version"] == runtime["info"]["version"] == "0.3.1"
     assert set(artifact["paths"]) == set(runtime["paths"])
     # JSON Schema treats an omitted ``additionalProperties`` and an explicit
     # ``true`` identically. Pydantic releases differ only in whether they emit

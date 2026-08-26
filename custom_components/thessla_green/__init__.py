@@ -38,11 +38,12 @@ from .http import VIEWS
 _LOGGER = logging.getLogger(__name__)
 _FRONTEND_URL = "/api/thessla_green/frontend"
 _PANEL_PREFIX = "thessla-green"
-_CARD_MODULE_URL = f"{_FRONTEND_URL}/card.js?v=0.3.0-card1"
+_CARD_MODULE_URL = f"{_FRONTEND_URL}/card.js?v=0.3.1-card1"
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.FAN,
+    Platform.NUMBER,
     Platform.SENSOR,
     Platform.SELECT,
     Platform.BUTTON,

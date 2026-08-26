@@ -21,8 +21,6 @@ DEFAULT_TIMEOUT = 1.5
 DEFAULT_URL = "http://127.0.0.1:8000"
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=5)
 
-PLATFORMS = ("binary_sensor", "fan", "sensor", "select", "button")
-
 MODE_OPTIONS = {
     "automatic": 0,
     "manual": 1,
