@@ -74,6 +74,16 @@ class GatewayApi:
     async def async_get_state(self) -> dict[str, Any]:
         return await self._request("GET", "/api/v1/state")
 
+    async def async_get_devices(self) -> dict[str, Any]:
+        """Return the gateway's discovered devices without probing Modbus."""
+
+        return await self._request("GET", "/api/v1/devices")
+
+    async def async_get_serial_ports(self) -> dict[str, Any]:
+        """Return read-only serial candidates reported by the gateway host."""
+
+        return await self._request("GET", "/api/v1/discovery/serial-ports")
+
     async def async_get_capabilities(self) -> dict[str, Any]:
         return await self._request("GET", "/api/v1/capabilities")
 

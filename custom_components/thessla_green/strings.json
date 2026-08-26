@@ -9,6 +9,11 @@
           "token": "Token API (opcjonalnie)"
         }
       },
+      "confirm": {
+        "title": "Wykryto centralę Thessla Green",
+        "description": "Model: {model}\nFirmware: {firmware}\nNumer seryjny: {serial_number}\nAdres Modbus właściciela gatewaya: {endpoint}\nID Modbus: {unit_id}\nPorty szeregowe widoczne na hoście gatewaya:\n{serial_ports}\n\nGateway jest jedynym właścicielem magistrali. HACS pobiera snapshot przez API i nie otwiera Modbus bezpośrednio.",
+        "data": {}
+      },
       "reauth": {
         "title": "Ponowna autoryzacja gatewaya",
         "data": {
@@ -26,7 +31,8 @@
     "error": {
       "invalid_url": "Podaj poprawny adres HTTP lub HTTPS.",
       "cannot_connect": "Nie można połączyć się z gatewayem lub urządzenie jest offline.",
-      "invalid_auth": "Gateway odrzucił token API."
+      "invalid_auth": "Gateway odrzucił token API.",
+      "device_not_found": "Gateway odpowiada, ale nie ma potwierdzonej centrali AirPack. Uruchom discovery i konfigurację gatewaya."
     },
     "abort": {
       "already_configured": "To urządzenie jest już skonfigurowane.",

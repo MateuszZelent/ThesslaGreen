@@ -121,8 +121,12 @@ nie pomiarem rzeczywistej centrali.
 1. W HACS wybierz **Custom repositories** i dodaj repozytorium jako typ **Integration**.
 2. Zainstaluj `Thessla Green` i zrestartuj Home Assistant.
 3. W **Settings → Devices & services → Add integration** wybierz **Thessla Green**.
-4. Podaj URL gatewaya i token, jeśli jest włączony.
-5. Dodaj do dashboardu encję `fan`, sensory zadanej intensywności oraz sensory przepływu.
+4. Podaj URL gatewaya i token, jeśli jest włączony. Drugi krok kreatora pokaże potwierdzoną
+   centralę, endpoint/unit ID oraz porty widoczne na hoście gatewaya.
+5. Po zapisaniu konfiguracji w bocznym menu pojawi się panel **Thessla Green** z tą samą grafiką
+   animacji i panelem sterowania co lokalny `/ui/` gatewaya.
+6. Opcjonalnie dodaj do własnego dashboardu encję `fan`, sensory zadanej intensywności oraz
+   sensory przepływu.
 
 Integracja tworzy jeden coordinator i jedną grupę urządzenia. `fan` prezentuje potwierdzoną
 nastawę ręczną/chwilową, binary sensor `Klapa bypassu` pokazuje fizyczny stan cewki 9,
@@ -131,3 +135,7 @@ i stopniem/trybem w atrybutach, a osobne sensory prezentują bieżące zadanie n
 `select` tryb pracy/tryb specjalny, a sensor `Ostatnie potwierdzone polecenie` zawiera
 szczegóły read-backu. Integracja HACS nie importuje `pymodbus` i nie może działać równolegle z
 bezpośrednią integracją Modbus tej samej centrali.
+
+Panel boczny jest tylko osadzonym widokiem publicznego UI gatewaya — HACS nie otwiera portu
+szeregowego ani nie wykonuje drugiego odczytu Modbus. Jeżeli gateway wymaga tokenu, wpisz go w
+polu tokenu w osadzonym panelu; token nie jest przekazywany w adresie URL.

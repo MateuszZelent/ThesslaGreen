@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlparse
 
@@ -15,10 +16,47 @@ from .api import GatewayApi, GatewayAuthError, GatewayError
 from .const import CONF_TOKEN, CONF_URL, DEFAULT_URL, DOMAIN
 
 
+def _format_discovery_details(
+    state: Mapping[str, Any], serial_ports: Mapping[str, Any]
+) -> dict[str, str]:
+    """Turn the gateway discovery response into safe config-flow placeholders."""
+
+    identity = state.get("identity")
+    identity = identity if isinstance(identity, Mapping) else {}
+    endpoint = identity.get("endpoint")
+    endpoint = endpoint if isinstance(endpoint, Mapping) else {}
+
+    endpoint_text = str(endpoint.get("key") or endpoint.get("address") or "brak")
+    port_items = serial_ports.get("ports")
+    port_lines: list[str] = []
+    if isinstance(port_items, list):
+        for item in port_items:
+            if not isinstance(item, Mapping):
+                continue
+            device = str(item.get("device") or "")
+            description = str(item.get("description") or "").strip()
+            if device:
+                port_lines.append(f"{device} ({description})" if description else device)
+
+    return {
+        "model": str(identity.get("model") or "AirPack"),
+        "firmware": str(identity.get("firmware") or "brak odczytu"),
+        "serial_number": str(identity.get("serial_number") or "brak odczytu"),
+        "endpoint": endpoint_text,
+        "unit_id": str(identity.get("unit_id") or "brak"),
+        "serial_ports": "\n".join(port_lines) if port_lines else "brak wykrytych portów",
+    }
+
+
 class ThesslaGreenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure one gateway without touching Modbus from Home Assistant."""
 
     VERSION = 1
+
+    def __init__(self) -> None:
+        self._pending_entry_data: dict[str, str] | None = None
+        self._pending_title = "Thessla Green"
+        self._pending_discovery: dict[str, str] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -42,17 +80,25 @@ class ThesslaGreenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     identity = state.get("identity") if isinstance(state, dict) else None
                     identity = identity if isinstance(identity, dict) else {}
-                    stable_id = str(identity.get("stable_id") or url)
-                    await self.async_set_unique_id(stable_id)
-                    self._abort_if_unique_id_configured()
-                    title = str(identity.get("model") or "Thessla Green Gateway")
-                    return self.async_create_entry(
-                        title=title,
-                        data={
+                    if not identity:
+                        errors["base"] = "device_not_found"
+                    else:
+                        try:
+                            serial_ports = await api.async_get_serial_ports()
+                        except GatewayError:
+                            # Older gateways may not expose the optional inventory route;
+                            # a valid state response is still sufficient to configure HA.
+                            serial_ports = {}
+                        stable_id = str(identity.get("stable_id") or url)
+                        await self.async_set_unique_id(stable_id)
+                        self._abort_if_unique_id_configured()
+                        self._pending_entry_data = {
                             CONF_URL: url,
                             CONF_TOKEN: str(user_input.get(CONF_TOKEN, "")).strip(),
-                        },
-                    )
+                        }
+                        self._pending_title = str(identity.get("model") or "Thessla Green Gateway")
+                        self._pending_discovery = _format_discovery_details(state, serial_ports)
+                        return await self.async_step_confirm()
 
         return self.async_show_form(
             step_id="user",
@@ -63,6 +109,24 @@ class ThesslaGreenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm the discovered AirPack and show the gateway's Modbus evidence."""
+
+        if self._pending_entry_data is None:
+            return self.async_abort(reason="unknown_error")
+        if user_input is not None:
+            data = self._pending_entry_data
+            self._pending_entry_data = None
+            return self.async_create_entry(title=self._pending_title, data=data)
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=vol.Schema({}),
+            description_placeholders=self._pending_discovery,
+            last_step=True,
         )
 
     async def async_step_reauth(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:

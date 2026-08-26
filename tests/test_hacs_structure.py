@@ -46,3 +46,27 @@ def test_hacs_exposes_built_in_heater_and_bypass_states_from_one_snapshot() -> N
     assert "ThesslaGreenErvPostHeaterSensor" in binary_sensor
     assert "fpx_stage" in binary_sensor
     assert "erv_post_heater_mode" in binary_sensor
+
+
+def test_hacs_registers_the_gateway_ui_panel_without_a_second_modbus_owner() -> None:
+    panel = INTEGRATION / "www" / "panel.js"
+    init_source = (INTEGRATION / "__init__.py").read_text(encoding="utf-8")
+
+    assert panel.is_file()
+    panel_source = panel.read_text(encoding="utf-8")
+    assert "const TAG_NAME = \"thessla-green-panel\"" in panel_source
+    assert "customElements.define(TAG_NAME" in panel_source
+    assert "gateway_url" in panel_source
+    assert "async_register_static_paths" in init_source
+    assert "async_register_built_in_panel" in init_source
+    assert "pymodbus" not in panel_source
+
+
+def test_hacs_config_flow_shows_gateway_discovery_evidence() -> None:
+    config_flow = (INTEGRATION / "config_flow.py").read_text(encoding="utf-8")
+    strings = json.loads((INTEGRATION / "strings.json").read_text(encoding="utf-8"))
+
+    assert "async_get_serial_ports" in config_flow
+    assert "async_step_confirm" in config_flow
+    assert "serial_ports" in strings["config"]["step"]["confirm"]["description"]
+    assert "device_not_found" in strings["config"]["error"]

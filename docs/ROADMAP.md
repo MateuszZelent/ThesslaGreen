@@ -108,11 +108,13 @@ idempotencję i błędy, a ponowne uruchomienie nie gubi konfiguracji ani audytu
 - testy jednostkowe integracji, HACS Action i Hassfest w CI;
 - test instalacji przez HACS jako custom repository, a później zgłoszenie do domyślnego katalogu.
 
-### Dostępny wycinek 0.2.0
+### Dostępny wycinek 0.2.15
 
 Repozytorium zawiera instalowalny pakiet `custom_components/thessla_green` z config flow,
-coordinatorem, fanem, sensorami, trybami i diagnostyką. Integracja łączy się wyłącznie z gatewayem;
-przed publikacją do katalogu domyślnego pozostają Hassfest, pełny test na czystym HA i release Git.
+coordinatorem, fanem, sensorami, trybami, diagnostyką, wykrywaniem informacji o gatewayu w kreatorze
+oraz automatycznie rejestrowanym panelem bocznym osadzającym `/ui/`. Integracja łączy się wyłącznie
+z gatewayem; przed publikacją do katalogu domyślnego pozostają Hassfest, pełny test na czystym HA i
+release Git.
 
 **Gotowe, gdy:** czysta instalacja Home Assistant dodaje integrację wyłącznie przez UI, wszystkie
 encje odtwarzają stan gatewaya, a sterowanie z HA kończy się tym samym potwierdzonym poleceniem co

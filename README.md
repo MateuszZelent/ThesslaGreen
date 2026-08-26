@@ -242,10 +242,16 @@ magistrali.
 ### HACS
 
 W HACS dodaj to repozytorium jako **Custom repository** typu **Integration**, zainstaluj wersję
-`0.2.14`, zrestartuj Home Assistant i dodaj integrację **Thessla Green** przez UI. W konfiguracji
-podaj URL gatewaya, np. `http://127.0.0.1:8000` (albo adres hosta gatewaya widoczny z kontenera HA)
-i opcjonalny token API. Wyłącz bezpośrednią integrację Modbus dla tej samej centrali — gateway
-pozostaje jedynym właścicielem portu.
+`0.2.15`, zrestartuj Home Assistant i dodaj integrację **Thessla Green** przez UI. Kreator
+potwierdza model, firmware, numer seryjny, adres/unit ID Modbus oraz porty widoczne na hoście
+gatewaya. W konfiguracji podaj URL gatewaya, np. `http://127.0.0.1:8000` (albo adres hosta
+gatewaya widoczny z kontenera HA) i opcjonalny token API. Wyłącz bezpośrednią integrację Modbus
+dla tej samej centrali — gateway pozostaje jedynym właścicielem portu.
+
+Po konfiguracji integracja dodaje panel **Thessla Green** do bocznego menu Home Assistant. Panel
+osadza tę samą animację i sterowanie, które gateway udostępnia pod `/ui/`; dzięki temu widoki nie
+rozjeżdżają się, a zapis nadal przechodzi przez jeden gateway i jego read-back. Jeśli HA działa
+po HTTPS, gateway również musi być dostępny po HTTPS, inaczej przeglądarka zablokuje osadzony panel.
 
 Po dodaniu integracji HACS do dashboardu można dodać encję `fan` rekuperatora. Suwak pokazuje
 potwierdzoną nastawę procentową, a atrybuty encji zawierają oba setpointy (`manual` i `temporary`),

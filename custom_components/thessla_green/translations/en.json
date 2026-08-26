@@ -9,6 +9,11 @@
           "token": "API token (optional)"
         }
       },
+      "confirm": {
+        "title": "Thessla Green unit discovered",
+        "description": "Model: {model}\nFirmware: {firmware}\nSerial number: {serial_number}\nGateway Modbus owner endpoint: {endpoint}\nModbus unit ID: {unit_id}\nSerial ports visible on the gateway host:\n{serial_ports}\n\nThe gateway remains the sole bus owner. HACS reads snapshots through its API and never opens Modbus directly.",
+        "data": {}
+      },
       "reauth": {
         "title": "Re-authenticate gateway",
         "data": {
@@ -26,7 +31,8 @@
     "error": {
       "invalid_url": "Enter a valid HTTP or HTTPS URL.",
       "cannot_connect": "Unable to connect to the gateway or the device is offline.",
-      "invalid_auth": "The gateway rejected the API token."
+      "invalid_auth": "The gateway rejected the API token.",
+      "device_not_found": "The gateway responds, but no confirmed AirPack unit is available. Run gateway discovery and configuration first."
     },
     "abort": {
       "already_configured": "This device is already configured.",

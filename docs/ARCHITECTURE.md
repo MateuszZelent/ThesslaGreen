@@ -106,6 +106,7 @@ custom_components/thessla_green/
   diagnostics.py
   strings.json
   translations/
+  www/panel.js
 hacs.json
 README.md
 ```
@@ -117,6 +118,9 @@ HACS pobiera tylko pliki integracji, a zależności biblioteczne mają niezależ
 Wymagania funkcjonalne integracji:
 
 - konfiguracja wyłącznie przez UI (`config_flow`) z testem połączenia i blokadą duplikatów;
+- kreator po teście gatewaya pokazuje potwierdzony model/firmware, endpoint i unit ID Modbus oraz
+  read-only listę portów widocznych na hoście; wybór i otwarcie magistrali pozostają po stronie
+  wcześniej skonfigurowanego gatewaya;
 - `manifest.json` z co najmniej domeną, nazwą, wersją, dokumentacją, trackerem błędów i
   `codeowners`; typ integracji: `hub` lub `device` zależnie od ostatecznego modelu;
 - jeden `DataUpdateCoordinator` pobierający snapshot zamiast odpytywania osobno przez każdą
@@ -127,6 +131,8 @@ Wymagania funkcjonalne integracji:
 - encje niedostępne dla funkcji nieobsługiwanych przez dany model/firmware;
 - reautoryzacja, ponowna konfiguracja hosta, tłumaczenia PL/EN, diagnostyka z redakcją sekretów;
 - brak blokującego I/O w pętli Home Assistant oraz prawidłowe wyrejestrowanie subskrypcji;
+- opcjonalny panel boczny osadza lokalny `/ui/` gatewaya, dzięki czemu animacja i sterowanie są
+  współdzielone bez kopiowania logiki API do frontendu HA;
 - walidacje HACS i Hassfest w CI oraz wersjonowane GitHub Releases.
 
 W profilu Gateway integracja nie implementuje logiki Modbus ani automatyki. Mapuje stabilny
