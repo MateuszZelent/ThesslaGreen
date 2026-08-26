@@ -44,6 +44,13 @@ class AirPackMode(IntEnum):
     TEMPORARY = 2
 
 
+class ComfortPreference(IntEnum):
+    """Panel preference for active supply-air temperature conditioning."""
+
+    ECO = 0
+    COMFORT = 1
+
+
 class SpecialMode(IntEnum):
     NONE = 0
     HOOD = 1
@@ -92,6 +99,7 @@ DEFAULT_CONTROL_CAPABILITIES = Capabilities(
             "manual_fan_speed",
             "temporary_fan_speed",
             "special_mode",
+            "comfort_mode",
             "on_off",
         }
     ),
@@ -411,6 +419,23 @@ class AirPackController:
             int(selected),
             command=f"set_special_mode:{SPECIAL_MODE_NAMES[selected]}",
             feature="special_mode",
+            source=source,
+        )
+
+    async def set_comfort_mode(
+        self, mode: ComfortPreference | int, *, source: str = "unknown"
+    ) -> ControlResult:
+        """Select documented EKO (0) or KOMFORT (1) panel preference."""
+
+        try:
+            selected = ComfortPreference(mode)
+        except ValueError as exc:
+            raise ValueError("comfort mode must be 0 (eco) or 1 (comfort)") from exc
+        return await self._write_and_confirm(
+            REGISTERS_BY_KEY["comfort_mode_panel"],
+            int(selected),
+            command=f"set_comfort_mode:{selected.name.lower()}",
+            feature="comfort_mode",
             source=source,
         )
 

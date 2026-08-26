@@ -63,6 +63,34 @@ REGISTERS: tuple[RegisterDefinition, ...] = (
     RegisterDefinition("supply_airflow", 256, RegisterArea.INPUT, "m³/h"),
     RegisterDefinition("extract_airflow", 257, RegisterArea.INPUT, "m³/h"),
     RegisterDefinition(
+        "constant_flow_active", 271, RegisterArea.INPUT,
+        description="Status aktywności systemu Constant Flow",
+    ),
+    RegisterDefinition(
+        "supply_percentage", 272, RegisterArea.INPUT, "%",
+        description="Aktualnie zadana intensywność wentylacji - nawiew",
+    ),
+    RegisterDefinition(
+        "extract_percentage", 273, RegisterArea.INPUT, "%",
+        description="Aktualnie zadana intensywność wentylacji - wywiew",
+    ),
+    RegisterDefinition(
+        "supply_flowrate", 274, RegisterArea.INPUT, "m³/h",
+        description="Zadany strumień przepływu - nawiew (wartość panelu Air++)",
+    ),
+    RegisterDefinition(
+        "extract_flowrate", 275, RegisterArea.INPUT, "m³/h",
+        description="Zadany strumień przepływu - wywiew (wartość panelu Air++)",
+    ),
+    RegisterDefinition(
+        "fpx_system_active", 4192, RegisterArea.HOLDING,
+        description="Flaga systemu przeciwzamrożeniowego FPX; nie oznacza stanu samej grzałki",
+    ),
+    RegisterDefinition(
+        "fpx_stage", 4198, RegisterArea.HOLDING,
+        description="0 OFF, 1 FPX1, 2 FPX2",
+    ),
+    RegisterDefinition(
         "mode", 4208, RegisterArea.HOLDING, writable=True, minimum=0, maximum=2,
         description="0 automatic, 1 manual, 2 temporary",
     ),
@@ -127,6 +155,14 @@ REGISTERS: tuple[RegisterDefinition, ...] = (
         minimum=0,
         maximum=1,
         description="airflowRateChangeFlag; write 1 with mode and speed in one operation",
+    ),
+    RegisterDefinition(
+        "erv_post_heater_active", 4704, RegisterArea.HOLDING,
+        description="Status wbudowanej nagrzewnicy wtórnej ERV: 0 inactive, 1 active",
+    ),
+    RegisterDefinition(
+        "erv_post_heater_mode", 4711, RegisterArea.HOLDING,
+        description="Konfiguracja wbudowanej nagrzewnicy wtórnej ERV: 0 off, 1 mode 1, 2 mode 2",
     ),
 )
 

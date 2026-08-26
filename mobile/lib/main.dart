@@ -102,7 +102,7 @@ class _GatewayPageState extends State<GatewayPage> {
       if (!mounted) return;
       setState(() {
         _state = state;
-        _requestedSpeed = (state.activeFanSpeed ?? 40).toDouble().clamp(10, 100).toDouble();
+        _requestedSpeed = (state.editableFanSpeed ?? 40).toDouble().clamp(10, 100).toDouble();
         _selectedMode = _modeName(state.mode);
         _selectedSpecialMode = _specialModeName(state.values['special_mode']);
         _error = null;
@@ -125,7 +125,7 @@ class _GatewayPageState extends State<GatewayPage> {
       if (!mounted) return;
       setState(() {
         _state = state;
-        _requestedSpeed = (state.activeFanSpeed ?? _requestedSpeed)
+        _requestedSpeed = (state.editableFanSpeed ?? _requestedSpeed)
             .toDouble()
             .clamp(10, 100)
             .toDouble();
@@ -154,7 +154,7 @@ class _GatewayPageState extends State<GatewayPage> {
     setState(() {
       // The screen adopts only the confirmed snapshot returned by the gateway.
       _state = response.state;
-      _requestedSpeed = (response.state.activeFanSpeed ?? _requestedSpeed)
+      _requestedSpeed = (response.state.editableFanSpeed ?? _requestedSpeed)
           .toDouble()
           .clamp(10, 100)
           .toDouble();
@@ -211,7 +211,8 @@ class _GatewayPageState extends State<GatewayPage> {
   Widget build(BuildContext context) {
     final state = _state;
     final values = state?.values ?? const <String, dynamic>{};
-    final activeSpeed = state?.activeFanSpeed;
+    final activeSupply = state?.supplyPercentage;
+    final activeExtract = state?.extractPercentage;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Thessla Green'),
@@ -253,9 +254,14 @@ class _GatewayPageState extends State<GatewayPage> {
                         : '${state.online ? 'Online' : 'Offline'} · revision ${state.revision}',
                   ),
                   const SizedBox(height: 12),
-                  _metricRow('Aktywna nastawa', activeSpeed == null ? '—' : '$activeSpeed%'),
-                  _metricRow('Nawiew', _formatMetric(values['supply_airflow'], 'm³/h')),
-                  _metricRow('Wywiew', _formatMetric(values['extract_airflow'], 'm³/h')),
+                  _metricRow(
+                    'Zadane: nawiew / wywiew',
+                    activeSupply == null || activeExtract == null
+                        ? '—'
+                        : '$activeSupply% / $activeExtract%',
+                  ),
+                  _metricRow('Nawiew', _formatMetric(values['supply_flowrate'], 'm³/h')),
+                  _metricRow('Wywiew', _formatMetric(values['extract_flowrate'], 'm³/h')),
                   _metricRow(
                     'Temperatura zewnętrzna',
                     _formatMetric(values['outdoor_temperature'], '°C'),
@@ -356,13 +362,15 @@ class _GatewayPageState extends State<GatewayPage> {
                               _run(
                                 () => _sendCommand(
                                   'set_power',
-                                  {'enabled': values['power'] != true},
+                                  {'enabled': !(state?.powerOn ?? false)},
                                 ),
                               ),
                             ),
-                      icon: Icon(values['power'] == true ? Icons.power_settings_new : Icons.power),
+                      icon: Icon(
+                        state?.powerOn == true ? Icons.power_settings_new : Icons.power,
+                      ),
                       label: Text(
-                        values['power'] == true ? 'Wyłącz centralę' : 'Włącz centralę',
+                        state?.powerOn == true ? 'Wyłącz centralę' : 'Włącz centralę',
                       ),
                     ),
                   ),

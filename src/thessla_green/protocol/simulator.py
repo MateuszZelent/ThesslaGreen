@@ -49,6 +49,7 @@ class SimulatedAirPackTransport:
         temporary_fan_speed: int = 40,
         special_mode: int = 0,
         power: bool = True,
+        constant_flow_active: bool = True,
         airflow_factor: float = 6.0,
         response_delay_seconds: float = 0.0,
         readback_offset: int = 0,
@@ -70,6 +71,7 @@ class SimulatedAirPackTransport:
         self.airflow_factor = airflow_factor
         self.response_delay_seconds = response_delay_seconds
         self.readback_offset = readback_offset
+        self.constant_flow_active = constant_flow_active
         self.writes: list[tuple[int, int, int]] = []
         self.write_blocks: list[tuple[int, tuple[int, ...], int]] = []
         self._connected = False
@@ -101,6 +103,8 @@ class SimulatedAirPackTransport:
             },
         }
         self._holding_registers: dict[int, int] = {
+            4192: 1,
+            4198: 1,
             4208: mode,
             4209: season,
             4210: manual_fan_speed,
@@ -114,6 +118,8 @@ class SimulatedAirPackTransport:
             4400: mode,
             4401: temporary_fan_speed,
             4402: 0,
+            4704: 1,
+            4711: 2,
         }
         self._validate_initial_registers()
 
@@ -130,6 +136,16 @@ class SimulatedAirPackTransport:
         await self._delay()
         if (address, count) == (256, 2):
             return self._airflow_registers()
+        if (address, count) == (271, 5):
+            supply, extract = self._target_flowrates()
+            return (
+                int(self.constant_flow_active),
+                *self._active_percentages(),
+                supply,
+                extract,
+            )
+        if (address, count) == (272, 2):
+            return self._active_percentages()
         return self._read_block(self._input_registers, address, count)
 
     async def read_holding_registers(
@@ -184,12 +200,25 @@ class SimulatedAirPackTransport:
             self._holding_registers[4211] = normalized[1] + self.readback_offset
 
     def _airflow_registers(self) -> tuple[int, int]:
+        if not self.constant_flow_active:
+            return (0xFFFF, 0xFFFF)
+        if self._holding_registers[4387] == 0:
+            return (0, 0)
+        return self._target_flowrates()
+
+    def _target_flowrates(self) -> tuple[int, int]:
+        if self._holding_registers[4387] == 0:
+            return (0, 0)
+        speed = self._active_percentages()[0]
+        supply = max(0, round(speed * self.airflow_factor))
+        return supply, round(supply * 0.98)
+
+    def _active_percentages(self) -> tuple[int, int]:
         if self._holding_registers[4387] == 0:
             return (0, 0)
         mode = self._holding_registers[4208]
         speed = self._holding_registers[4211] if mode == 2 else self._holding_registers[4210]
-        supply = max(0, round(speed * self.airflow_factor))
-        return supply, round(supply * 0.98)
+        return (speed, speed)
 
     @staticmethod
     def _read_block(registers: Mapping[int, int], address: int, count: int) -> tuple[int, ...]:

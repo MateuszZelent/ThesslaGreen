@@ -97,7 +97,17 @@ class DeviceIdentity:
         """Stable device key, preferring the vendor serial number."""
 
         if self.serial_number:
-            return f"{self.model.lower()}-{self.serial_number.replace(' ', '-')}-{self.unit_id}"
+            groups = self.serial_number.lower().split()
+            # Since 0.2.2 the public serial follows the PDF (three groups made
+            # from six bytes). Preserve the legacy six-word token so existing
+            # Home Assistant unique IDs do not change after the codec fix.
+            if len(groups) == 3 and all(len(group) == 4 for group in groups):
+                groups = [
+                    f"00{group[offset:offset + 2]}"
+                    for group in groups
+                    for offset in (0, 2)
+                ]
+            return f"{self.model.lower()}-{'-'.join(groups)}-{self.unit_id}"
         endpoint = self.endpoint.key if self.endpoint else "unknown"
         # Keep the fallback safe for URL path segments and Home Assistant IDs.
         endpoint_id = endpoint.replace("://", "-").replace("/", "-").replace(":", "-")

@@ -19,6 +19,10 @@ class AirPackRegisterProfile:
     serial_count: int = 6
     airflow_address: int = 256
     airflow_count: int = 2
+    percentage_address: int = 272
+    percentage_count: int = 2
+    flowrate_address: int = 274
+    flowrate_count: int = 2
     mode_address: int = 4208
     # mode, season, manual intensity and temporary intensity (4208..4211)
     mode_count: int = 4

@@ -41,7 +41,7 @@ class FakeAirPackTransport:
         if address == 16 and count == 7:
             return (215, 220, 225, 230, 235, 240, 245)
         if address == 24 and count == 6:
-            return (0x1A2B, 0x3C4D, 0x5E6F, 0x0070, 0x0081, 0x0092)
+            return (0x001A, 0x002B, 0x003C, 0x004D, 0x005E, 0x006F)
         raise AssertionError((address, count, unit_id))
 
     async def read_holding_registers(
@@ -108,6 +108,24 @@ class MalformedTransport(FakeAirPackTransport):
         return await super().read_input_registers(address, count, unit_id)
 
 
+class InvalidTemperatureFingerprintTransport(FakeAirPackTransport):
+    async def read_input_registers(
+        self, address: int, count: int, unit_id: int
+    ) -> tuple[int, ...]:
+        if address == 16 and count == 7:
+            return (1000, 220, 225, 230, 235, 240, 245)
+        return await super().read_input_registers(address, count, unit_id)
+
+
+class ExperimentalFirmwareTransport(FakeAirPackTransport):
+    async def read_input_registers(
+        self, address: int, count: int, unit_id: int
+    ) -> tuple[int, ...]:
+        if address == 0 and count == 5:
+            return (95, 12, 0, 0, 34)
+        return await super().read_input_registers(address, count, unit_id)
+
+
 class ExceptionResponseTransport(FakeAirPackTransport):
     async def read_input_registers(
         self, address: int, count: int, unit_id: int
@@ -168,9 +186,43 @@ def test_discovery_identifies_airpack_from_read_only_fingerprint() -> None:
         assert result.status is ProbeStatus.AIRPACK
         assert result.identity is not None
         assert result.identity.firmware == (4, 84, 2)
-        assert result.identity.serial_number == "1a2b 3c4d 5e6f 0070 0081 0092"
+        assert result.identity.serial_number == "1a2b 3c4d 5e6f"
         assert result.evidence["read_only"] is True
         assert result.modbus_verified
+
+    asyncio.run(run())
+
+
+def test_discovery_rejects_values_outside_the_pdf_fingerprint() -> None:
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.TCP, "192.0.2.30", port=502)
+        result = (
+            await DiscoveryService(
+                Settings(discovery_device_ids=(10,)),
+                transport_factory=InvalidTemperatureFingerprintTransport,
+            ).discover(endpoints=(endpoint,))
+        )[0]
+
+        assert result.status is ProbeStatus.UNKNOWN_MODBUS_DEVICE
+        assert not result.is_selectable
+        assert "-999..999" in (result.error or "")
+
+    asyncio.run(run())
+
+
+def test_discovery_accepts_documented_9x_test_firmware() -> None:
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.TCP, "192.0.2.31", port=502)
+        result = (
+            await DiscoveryService(
+                Settings(discovery_device_ids=(10,)),
+                transport_factory=ExperimentalFirmwareTransport,
+            ).discover(endpoints=(endpoint,))
+        )[0]
+
+        assert result.status is ProbeStatus.AIRPACK
+        assert result.identity is not None
+        assert result.identity.firmware == (95, 12, 34)
 
     asyncio.run(run())
 

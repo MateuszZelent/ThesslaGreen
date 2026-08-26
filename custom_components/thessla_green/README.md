@@ -19,5 +19,9 @@ writes.
 The fan entity shows the confirmed manual or temporary percentage. Its attributes include the
 instantaneous supply/exhaust airflow in m³/h and the last command's read-back result. The vendor
 protocol does not expose RPM; airflow is therefore the physical reaction signal shown by the UI.
+Separate sensors expose the current supply and exhaust demand from input registers 272/273. When
+The panel-compatible target flow rates come from registers 274/275. Constant Flow measurements
+remain separate; when CF is inactive, raw airflow `0xffff` is exposed as unavailable rather than
+65535 m³/h.
 The integration also creates an `Ostatnie potwierdzone polecenie` sensor with the requested and
 read-back values.

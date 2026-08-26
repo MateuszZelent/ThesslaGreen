@@ -11,7 +11,10 @@ from dataclasses import replace
 from typing import Any
 
 from thessla_green import __version__
-from thessla_green.application.control import SPECIAL_MODE_NAMES, AirPackMode
+from thessla_green.application.control import (
+    USER_SELECTABLE_SPECIAL_MODES,
+    AirPackMode,
+)
 from thessla_green.application.factory import build_gateway, build_gateway_for_endpoint
 from thessla_green.application.gateway import GatewayService
 from thessla_green.config import Settings
@@ -118,7 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     mode = control_subparsers.add_parser("mode", help="set automatic/manual/temporary mode")
     mode.add_argument("mode", choices=[item.name.lower() for item in AirPackMode])
     special = control_subparsers.add_parser("special-mode", help="set a documented special mode")
-    special.add_argument("mode", choices=list(SPECIAL_MODE_NAMES.values()))
+    special.add_argument("mode", choices=list(USER_SELECTABLE_SPECIAL_MODES.values()))
     power = control_subparsers.add_parser("power", help="turn the unit on or off")
     power.add_argument("enabled", choices=("on", "off"))
     control.add_argument("--json", action="store_true", help="emit the confirmed result as JSON")
@@ -206,7 +209,12 @@ def _discovery_settings(
             discovery_ports=port_values,
         )
     if baudrates is not None:
-        settings = replace(settings, discovery_bauds=tuple(baudrates))
+        baud_values = tuple(baudrates)
+        settings = replace(
+            settings,
+            baudrate=baud_values[0] if len(baud_values) == 1 else settings.baudrate,
+            discovery_bauds=baud_values,
+        )
     if unit_ids is not None:
         unit_values = tuple(unit_ids)
         settings = replace(
@@ -449,7 +457,7 @@ async def _control(args: argparse.Namespace) -> dict[str, Any]:
             else:
                 result = await service.set_mode(selected_mode, source="cli")
         elif args.control_command == "special-mode":
-            names = {name: mode for mode, name in SPECIAL_MODE_NAMES.items()}
+            names = {name: mode for mode, name in USER_SELECTABLE_SPECIAL_MODES.items()}
             result = await service.set_special_mode(names[args.mode], source="cli")
         else:
             result = await service.set_power(args.enabled == "on", source="cli")
@@ -577,11 +585,11 @@ def _serve(args: argparse.Namespace) -> int:
         raise RuntimeError("install the API dependencies before running the gateway") from exc
 
     settings = _serve_settings(args)
+    from thessla_green.api.app import create_app
+
     if args.demo and args.auto_discover:
         raise RuntimeError("--demo and --auto-discover cannot be used together")
     if args.auto_discover:
-        from thessla_green.api.app import create_app
-
         discovered_service = asyncio.run(_build_auto_discovered_gateway(settings))
         uvicorn.run(
             create_app(
@@ -596,7 +604,6 @@ def _serve(args: argparse.Namespace) -> int:
         )
         return 0
     if args.demo:
-        from thessla_green.api.app import create_app
         from thessla_green.application.gateway import GatewayService
         from thessla_green.protocol.simulator import SimulatedAirPackTransport
 
@@ -620,8 +627,14 @@ def _serve(args: argparse.Namespace) -> int:
             log_level="info",
         )
         return 0
+    configured_service = build_gateway(settings)
     uvicorn.run(
-        "thessla_green.api.app:app",
+        create_app(
+            configured_service,
+            api_token=settings.api_token,
+            cors_origins=settings.api_cors_origins,
+            poll_interval_seconds=settings.poll_interval_seconds,
+        ),
         host=args.host or settings.api_bind,
         port=args.port or settings.api_port,
         log_level="info",

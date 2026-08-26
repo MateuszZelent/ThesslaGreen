@@ -14,6 +14,7 @@ from typing import Any
 from thessla_green.application.control import (
     USER_SELECTABLE_SPECIAL_MODES,
     AirPackMode,
+    ComfortPreference,
     DeviceControlError,
 )
 from thessla_green.application.factory import build_gateway
@@ -80,7 +81,7 @@ def create_app(
 
     app = FastAPI(
         title="Thessla Green Gateway",
-        version="0.2.1",
+        version="0.2.13",
         description="Local-first, read-confirmed control API for AirPack units.",
         lifespan=lifespan,
         dependencies=[Depends(authorize)] if api_token else None,
@@ -197,6 +198,9 @@ def create_app(
                 "activation": "atomic_register_block_4400_4402",
             },
             "modes": {mode.name.lower(): int(mode) for mode in AirPackMode},
+            "comfort_modes": {
+                mode.name.lower(): int(mode) for mode in ComfortPreference
+            },
             "special_modes": {
                 name: int(mode) for mode, name in USER_SELECTABLE_SPECIAL_MODES.items()
             },

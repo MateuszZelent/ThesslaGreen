@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +26,78 @@ def test_local_dashboard_assets_are_packaged() -> None:
     assert "refreshSnapshotForCommand" in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "mode-description" in (web_dir / "index.html").read_text(encoding="utf-8")
     assert "Chwilowy" in (web_dir / "index.html").read_text(encoding="utf-8")
-    assert "/ui/app.js?v=0.2.1" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "/ui/app.js?v=0.2.13" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="comfort-mode-buttons"' not in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "COMFORT_MODE_DETAILS" not in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "airflow_observation" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "values.supply_percentage" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "constant_flow_available" in (web_dir / "app.js").read_text(encoding="utf-8")
     assert "run-discovery" in (web_dir / "index.html").read_text(encoding="utf-8")
     assert "/api/v1/discovery" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'role="tablist"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="tab-parameters"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="parameter-table-body"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "PARAMETER_DEFINITIONS" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "renderParameters" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "Nawiew · panel Air++" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "Wywiew · panel Air++" in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'format(values.supply_flowrate, " m³/h")' in (
+        web_dir / "app.js"
+    ).read_text(encoding="utf-8")
+    assert "values.supply_airflow" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'format(values.supply_percentage, "%")' in (
+        web_dir / "app.js"
+    ).read_text(encoding="utf-8")
+    assert 'id="airflow-visualization"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="diagram-supply-performance"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "renderAirflowDiagram" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'id="flow-bypass-outdoor"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="flow-bypass-supply"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="diagram-unit-caption"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="diagram-bp-state"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="diagram-bp-state-label"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert '"BP WŁĄCZONY"' in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'id="diagram-ambient-temperature"' in (
+        web_dir / "index.html"
+    ).read_text(encoding="utf-8")
+    assert 'id="diagram-exhaust-temperature"' not in (
+        web_dir / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "[1, 2].includes(bypassModeValue)" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "values.ambient_temperature" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "prefers-reduced-motion" in (web_dir / "styles.css").read_text(encoding="utf-8")
+    assert 'id="fan-blade"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert (web_dir / "index.html").read_text(encoding="utf-8").count('href="#fan-blade"') == 10
+    assert "fanAnimationDuration" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'id="diagram-fpx-heater"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert 'id="diagram-erv-heater"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "renderHeaterTelemetry" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "values.fpx_stage" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "values.erv_post_heater_active" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert "moc: brak rejestru Modbus" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'id="special-mode-buttons"' in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert '<select id="special-mode"' not in (web_dir / "index.html").read_text(encoding="utf-8")
+    assert "SPECIAL_MODE_DETAILS" in (web_dir / "app.js").read_text(encoding="utf-8")
+    assert 'button.addEventListener("pointerdown", preview)' in (
+        web_dir / "app.js"
+    ).read_text(encoding="utf-8")
+    assert 'Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 })' in (
+        web_dir / "app.js"
+    ).read_text(encoding="utf-8")
+
+
+def test_dashboard_colors_are_centralized_in_theme_tokens() -> None:
+    web_dir = Path(__file__).parents[1] / "src" / "thessla_green" / "web"
+    css = (web_dir / "styles.css").read_text(encoding="utf-8")
+    html = (web_dir / "index.html").read_text(encoding="utf-8")
+    component_css = css.split("/* Foundation and shared layout */", maxsplit=1)[1]
+
+    assert "--navy-1000:" in css
+    assert "--accent-panel:" in css
+    assert "--flow-supply:" in css
+    assert re.search(r"#[0-9a-fA-F]{3,8}", component_css) is None
+    assert re.search(r"rgba?\(", component_css) is None
+    assert re.search(r"#[0-9a-fA-F]{3,8}", html) is None
 
 
 def test_fastapi_mounts_the_local_dashboard() -> None:
@@ -117,7 +186,7 @@ def test_versioned_openapi_artifact_tracks_runtime_routes() -> None:
     artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
     runtime = create_app().openapi()
 
-    assert artifact["info"]["version"] == runtime["info"]["version"] == "0.2.1"
+    assert artifact["info"]["version"] == runtime["info"]["version"] == "0.2.13"
     assert set(artifact["paths"]) == set(runtime["paths"])
     assert artifact["components"]["schemas"]["CommandRequest"] == runtime["components"][
         "schemas"

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <title>Thessla Green Gateway</title>
-    <link rel="icon" href="/ui/favicon.svg?v=0.2.1" type="image/svg+xml" />
-    <link rel="stylesheet" href="/ui/styles.css?v=0.2.1" />
-    <script src="/ui/app.js?v=0.2.1" defer></script>
+    <link rel="icon" href="/ui/favicon.svg?v=0.2.13" type="image/svg+xml" />
+    <link rel="stylesheet" href="/ui/styles.css?v=0.2.13" />
+    <script src="/ui/app.js?v=0.2.13" defer></script>
   </head>
   <body>
     <main class="shell">
@@ -36,30 +36,251 @@
         <div id="discovery-results" class="discovery-results" aria-live="polite"></div>
       </section>
 
-      <section class="metrics" aria-label="Bieżący stan">
+      <nav class="tabs" role="tablist" aria-label="Widok panelu">
+        <button
+          id="tab-control"
+          class="tab-button active"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-control"
+          tabindex="0"
+          data-tab="control"
+        >
+          Sterowanie
+        </button>
+        <button
+          id="tab-parameters"
+          class="tab-button"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-parameters"
+          tabindex="-1"
+          data-tab="parameters"
+        >
+          Parametry
+        </button>
+      </nav>
+
+      <section id="panel-control" class="tab-panel" role="tabpanel" aria-labelledby="tab-control">
+        <article id="airflow-visualization" class="panel airflow-panel" aria-labelledby="airflow-title">
+          <div class="airflow-heading">
+            <div>
+              <p class="eyebrow">AIRFLOW LIVE</p>
+              <h2 id="airflow-title">Przepływ powietrza</h2>
+              <p class="muted">Bieżący obraz pracy centrali, aktualizowany co 5 sekund</p>
+            </div>
+            <div class="airflow-statuses" aria-label="Stan centrali">
+              <span id="diagram-mode" class="diagram-pill">Tryb —</span>
+              <span id="diagram-season" class="diagram-pill">Sezon —</span>
+              <span id="diagram-bypass" class="diagram-pill">Bypass —</span>
+            </div>
+          </div>
+
+          <div class="airflow-canvas">
+            <svg
+              class="airflow-diagram"
+              viewBox="0 0 1000 570"
+              role="img"
+              aria-labelledby="airflow-svg-title airflow-svg-description"
+            >
+              <title id="airflow-svg-title">Schemat przepływu powietrza przez rekuperator</title>
+              <desc id="airflow-svg-description">
+                Schemat pokazuje aktualną drogę powietrza. Przy aktywnym bypassie powietrze
+                nawiewane omija wymiennik. Pokazuje też diagnostykę wbudowanych nagrzewnic
+                FPX i ERV. Wyrzutnia nie ma osobnego czujnika temperatury.
+              </desc>
+              <defs>
+                <linearGradient id="unit-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop class="unit-gradient-start" offset="0" />
+                  <stop class="unit-gradient-end" offset="1" />
+                </linearGradient>
+                <linearGradient id="exchanger-gradient" x1="0" y1="0" x2="1" y2="1">
+                  <stop class="exchanger-gradient-cold" offset="0" stop-opacity=".8" />
+                  <stop class="exchanger-gradient-supply" offset=".48" stop-opacity=".75" />
+                  <stop class="exchanger-gradient-warm" offset="1" stop-opacity=".85" />
+                </linearGradient>
+                <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+                <marker id="arrow-cold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path class="marker-cold" d="M 0 0 L 10 5 L 0 10 z" />
+                </marker>
+                <marker id="arrow-warm" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path class="marker-warm" d="M 0 0 L 10 5 L 0 10 z" />
+                </marker>
+                <marker id="arrow-supply" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path class="marker-supply" d="M 0 0 L 10 5 L 0 10 z" />
+                </marker>
+                <marker id="arrow-exhaust" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path class="marker-exhaust" d="M 0 0 L 10 5 L 0 10 z" />
+                </marker>
+                <path id="fan-blade" d="M 4 -3 C 9 -8 13 -16 14 -24 C 15 -28 20 -29 23 -25 C 27 -20 25 -12 20 -7 C 16 -3 10 0 5 2 Z" />
+              </defs>
+
+              <text class="zone-label" x="35" y="28">NA ZEWNĄTRZ</text>
+              <text class="zone-label" x="965" y="28" text-anchor="end">DOM</text>
+              <path class="zone-divider" d="M 24 42 H 976" />
+
+              <rect class="unit-shell" x="328" y="68" width="344" height="324" rx="42" />
+              <rect class="unit-inner" x="350" y="90" width="300" height="280" rx="30" />
+              <g id="diagram-bp-state" class="bypass-state" data-state="unknown" transform="translate(416 50)">
+                <rect width="168" height="42" rx="21" />
+                <circle cx="21" cy="21" r="7" />
+                <text id="diagram-bp-state-label" class="bypass-state-label" x="37" y="18">BP —</text>
+                <text id="diagram-bp-state-detail" class="bypass-state-detail" x="37" y="31">OCZEKIWANIE NA ODCZYT</text>
+              </g>
+
+              <path class="air-duct normal-supply-route" d="M 28 128 H 330 C 390 128 410 164 456 208" />
+              <path id="flow-outdoor" class="air-flow air-flow-cold normal-supply-route" d="M 28 128 H 330 C 390 128 410 164 456 208" marker-end="url(#arrow-cold)" />
+
+              <path class="air-duct normal-supply-route" d="M 544 252 C 590 296 610 332 670 332 H 972" />
+              <path id="flow-supply" class="air-flow air-flow-supply normal-supply-route" d="M 544 252 C 590 296 610 332 670 332 H 972" marker-end="url(#arrow-supply)" />
+
+              <g class="bypass-route" aria-hidden="true">
+                <path class="air-duct" d="M 28 128 H 350 C 382 128 398 150 398 181 V 308 C 398 324 414 332 438 332 H 972" />
+                <path id="flow-bypass-outdoor" class="air-flow air-flow-cold" d="M 28 128 H 350 C 382 128 398 150 398 181 V 308 C 398 324 414 332 438 332" marker-end="url(#arrow-cold)" />
+                <path id="flow-bypass-supply" class="air-flow air-flow-supply" d="M 438 332 H 972" marker-end="url(#arrow-supply)" />
+                <g class="bypass-indicator" transform="translate(368 224)">
+                  <rect width="60" height="28" rx="14" />
+                  <text x="30" y="19" text-anchor="middle">BP</text>
+                </g>
+              </g>
+
+              <path class="air-duct" d="M 972 128 H 670 C 610 128 590 164 544 208" />
+              <path id="flow-extract" class="air-flow air-flow-warm" d="M 972 128 H 670 C 610 128 590 164 544 208" marker-end="url(#arrow-warm)" />
+
+              <path class="air-duct" d="M 456 252 C 410 296 390 332 330 332 H 28" />
+              <path id="flow-exhaust" class="air-flow air-flow-exhaust" d="M 456 252 C 410 296 390 332 330 332 H 28" marker-end="url(#arrow-exhaust)" />
+
+              <g class="exchanger" filter="url(#soft-glow)">
+                <rect x="448" y="178" width="104" height="104" rx="18" transform="rotate(45 500 230)" />
+                <path d="M 470 191 L 529 269 M 453 208 L 512 286 M 488 174 L 547 252" />
+                <path d="M 529 191 L 470 269 M 547 208 L 488 286 M 512 174 L 453 252" />
+              </g>
+              <text class="unit-title" x="500" y="112" text-anchor="middle">AIRPACK</text>
+              <text id="diagram-unit-caption" class="unit-caption" x="500" y="135" text-anchor="middle">ODZYSK CIEPŁA</text>
+
+              <g class="fan fan-extract" transform="translate(715 128)" aria-hidden="true">
+                <circle class="fan-glow" r="35" />
+                <circle class="fan-housing" r="30" />
+                <circle class="fan-guide" r="23" />
+                <g class="fan-rotor">
+                  <use href="#fan-blade" />
+                  <use href="#fan-blade" transform="rotate(72)" />
+                  <use href="#fan-blade" transform="rotate(144)" />
+                  <use href="#fan-blade" transform="rotate(216)" />
+                  <use href="#fan-blade" transform="rotate(288)" />
+                </g>
+                <circle class="fan-hub" r="6" />
+                <circle class="fan-hub-core" r="2" />
+              </g>
+              <g class="fan fan-supply" transform="translate(715 332)" aria-hidden="true">
+                <circle class="fan-glow" r="35" />
+                <circle class="fan-housing" r="30" />
+                <circle class="fan-guide" r="23" />
+                <g class="fan-rotor">
+                  <use href="#fan-blade" />
+                  <use href="#fan-blade" transform="rotate(72)" />
+                  <use href="#fan-blade" transform="rotate(144)" />
+                  <use href="#fan-blade" transform="rotate(216)" />
+                  <use href="#fan-blade" transform="rotate(288)" />
+                </g>
+                <circle class="fan-hub" r="6" />
+                <circle class="fan-hub-core" r="2" />
+              </g>
+
+              <g class="reading-card" transform="translate(42 58)">
+                <rect width="220" height="54" rx="14" />
+                <text class="reading-label" x="14" y="19">POWIETRZE ZEWNĘTRZNE</text>
+                <text id="diagram-outdoor-temperature" class="reading-value cold-value" x="14" y="43">— °C</text>
+                <text id="diagram-fpx-temperature" class="reading-secondary" x="206" y="42" text-anchor="end">FPX — °C</text>
+              </g>
+              <g class="reading-card" transform="translate(738 58)">
+                <rect width="220" height="54" rx="14" />
+                <text class="reading-label" x="14" y="19">WYWIEW Z DOMU</text>
+                <text id="diagram-extract-temperature" class="reading-value warm-value" x="14" y="43">— °C</text>
+                <text id="diagram-extract-performance" class="reading-secondary" x="206" y="42" text-anchor="end">—% · — m³/h</text>
+              </g>
+              <g class="reading-card" transform="translate(42 348)">
+                <rect width="220" height="54" rx="14" />
+                <text class="reading-label" x="14" y="19">WYRZUTNIA</text>
+                <text class="reading-unavailable" x="14" y="42">BRAK CZUJNIKA TEMPERATURY</text>
+              </g>
+              <g class="reading-card" transform="translate(738 348)">
+                <rect width="220" height="54" rx="14" />
+                <text class="reading-label" x="14" y="19">NAWIEW DO DOMU</text>
+                <text id="diagram-supply-temperature" class="reading-value supply-value" x="14" y="43">— °C</text>
+                <text id="diagram-supply-performance" class="reading-secondary" x="206" y="42" text-anchor="end">—% · — m³/h</text>
+              </g>
+              <g class="ambient-reading" transform="translate(390 408)">
+                <rect width="220" height="34" rx="17" />
+                <text class="reading-label" x="14" y="21">OTOCZENIE CENTRALI / STRYCH</text>
+                <text id="diagram-ambient-temperature" class="reading-secondary ambient-value" x="206" y="21" text-anchor="end">— °C</text>
+              </g>
+
+              <path class="heater-divider" d="M 42 466 H 958" />
+              <g id="diagram-fpx-heater" class="heater-card" data-state="unknown" transform="translate(42 482)">
+                <rect class="heater-card-shell" width="440" height="72" rx="16" />
+                <g class="heater-icon" transform="translate(24 19)" aria-hidden="true">
+                  <circle cx="17" cy="17" r="17" />
+                  <path d="M 8 24 C 3 18 15 16 10 10 M 17 24 C 12 18 24 16 19 10 M 26 24 C 21 18 33 16 28 10" />
+                </g>
+                <text class="heater-kicker" x="68" y="20">WBUDOWANA NAGRZEWNICA WSTĘPNA · FPX</text>
+                <circle class="heater-status-dot" cx="418" cy="17" r="5" />
+                <text id="diagram-fpx-heater-status" class="heater-status" x="404" y="22" text-anchor="end">BRAK ODCZYTU</text>
+                <text id="diagram-fpx-heater-temperatures" class="heater-value" x="68" y="44">TZ1 — °C → TZ2 — °C</text>
+                <text id="diagram-fpx-heater-detail" class="heater-detail" x="68" y="61">Moc: niedostępna w Modbus</text>
+              </g>
+              <g id="diagram-erv-heater" class="heater-card" data-state="unknown" transform="translate(518 482)">
+                <rect class="heater-card-shell" width="440" height="72" rx="16" />
+                <g class="heater-icon" transform="translate(24 19)" aria-hidden="true">
+                  <circle cx="17" cy="17" r="17" />
+                  <path d="M 8 24 C 3 18 15 16 10 10 M 17 24 C 12 18 24 16 19 10 M 26 24 C 21 18 33 16 28 10" />
+                </g>
+                <text class="heater-kicker" x="68" y="20">WBUDOWANA NAGRZEWNICA WTÓRNA · ERV</text>
+                <circle class="heater-status-dot" cx="418" cy="17" r="5" />
+                <text id="diagram-erv-heater-status" class="heater-status" x="404" y="22" text-anchor="end">BRAK ODCZYTU</text>
+                <text id="diagram-erv-heater-temperature" class="heater-value" x="68" y="44">Nawiew TN1 — °C</text>
+                <text id="diagram-erv-heater-detail" class="heater-detail" x="68" y="61">Moc: niedostępna w Modbus</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="airflow-legend" aria-hidden="true">
+            <span><i class="legend-dot legend-cold"></i>świeże</span>
+            <span><i class="legend-dot legend-supply"></i>nawiew</span>
+            <span><i class="legend-dot legend-warm"></i>wywiew</span>
+            <span><i class="legend-dot legend-exhaust"></i>wyrzutnia</span>
+          </div>
+        </article>
+
+        <section class="metrics" aria-label="Bieżący stan">
         <article class="metric-card metric-card-accent">
-          <span class="metric-label">Aktywna nastawa</span>
+          <span class="metric-label">Tryb pracy</span>
           <strong id="active-speed" class="metric-value">—</strong>
           <span id="active-mode" class="metric-foot">—</span>
         </article>
         <article class="metric-card">
-          <span class="metric-label">Nawiew</span>
+            <span class="metric-label">Nawiew · panel Air++</span>
           <strong id="supply-airflow" class="metric-value">—</strong>
-          <span class="metric-foot">m³/h chwilowo</span>
+            <span id="supply-airflow-note" class="metric-foot">—% zadane</span>
         </article>
         <article class="metric-card">
-          <span class="metric-label">Wywiew</span>
+            <span class="metric-label">Wywiew · panel Air++</span>
           <strong id="extract-airflow" class="metric-value">—</strong>
-          <span class="metric-foot">m³/h chwilowo</span>
+            <span id="extract-airflow-note" class="metric-foot">—% zadane</span>
         </article>
         <article class="metric-card">
           <span class="metric-label">Temperatura zewnętrzna</span>
           <strong id="outdoor-temperature" class="metric-value">—</strong>
           <span class="metric-foot">°C</span>
         </article>
-      </section>
+        </section>
 
-      <section class="content-grid">
+        <section class="content-grid">
         <article class="panel">
           <div class="panel-heading">
             <div>
@@ -97,12 +318,31 @@
 
           <div class="divider"></div>
 
-          <label class="field">
-            <span>Tryb specjalny</span>
-            <select id="special-mode" aria-label="Tryb specjalny"></select>
-          </label>
-          <div class="button-row">
-            <button id="apply-special" class="button" type="button">Zastosuj tryb</button>
+          <fieldset class="special-control">
+            <legend>Tryb specjalny</legend>
+            <div
+              id="special-mode-buttons"
+              class="special-mode-grid"
+              aria-describedby="special-mode-description"
+            ></div>
+            <div id="special-mode-description" class="special-mode-description" aria-live="polite">
+              <div>
+                <span class="special-description-kicker">WYBRANY TRYB</span>
+                <strong id="special-description-title">Brak</strong>
+              </div>
+              <p id="special-description-text">
+                Centrala pracuje bez ręcznie wymuszonej funkcji specjalnej.
+              </p>
+            </div>
+            <p class="field-help special-mode-help">
+              Najedź, ustaw fokus lub przytrzymaj kafelek, aby zobaczyć opis. Zmiana zostanie
+              zapisana dopiero po użyciu przycisku poniżej.
+            </p>
+          </fieldset>
+          <button id="apply-special" class="button special-apply" type="button">
+            Zastosuj wybrany tryb
+          </button>
+          <div class="button-row power-row">
             <button id="power" class="button button-secondary" type="button">—</button>
           </div>
         </article>
@@ -129,12 +369,64 @@
             chwilowe przepływy nawiewu i wywiewu; protokół nie raportuje RPM.
           </p>
         </article>
+        </section>
+
+        <details class="raw-state">
+          <summary>Pełny snapshot JSON</summary>
+          <pre id="raw-state">Ładowanie…</pre>
+        </details>
       </section>
 
-      <details class="raw-state">
-        <summary>Pełny snapshot JSON</summary>
-        <pre id="raw-state">Ładowanie…</pre>
-      </details>
+      <section
+        id="panel-parameters"
+        class="tab-panel"
+        role="tabpanel"
+        aria-labelledby="tab-parameters"
+        hidden
+      >
+        <article class="panel parameters-panel">
+          <div class="panel-heading parameters-heading">
+            <div>
+              <p class="eyebrow">TELEMETRIA</p>
+              <h2>Parametry urządzenia</h2>
+              <p id="parameters-summary" class="muted">Oczekiwanie na pierwszy odczyt…</p>
+            </div>
+            <span id="parameters-updated" class="pill">—</span>
+          </div>
+
+          <label class="parameter-filter">
+            <span class="visually-hidden">Filtruj parametry</span>
+            <input
+              id="parameter-filter"
+              type="search"
+              autocomplete="off"
+              placeholder="Szukaj po nazwie lub kluczu API…"
+            />
+          </label>
+
+          <div class="table-scroll" tabindex="0" aria-label="Tabela parametrów urządzenia">
+            <table class="parameter-table">
+              <thead>
+                <tr>
+                  <th scope="col">Parametr</th>
+                  <th scope="col">Wartość</th>
+                  <th scope="col">Jednostka</th>
+                  <th scope="col">Klucz API</th>
+                </tr>
+              </thead>
+              <tbody id="parameter-table-body">
+                <tr>
+                  <td colspan="4" class="empty-table">Ładowanie parametrów…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="hint">
+            Tabela jest aktualizowana razem ze snapshotem co 5 sekund. „Brak pomiaru” oznacza,
+            że centrala nie udostępniła wartości w ostatnim odczycie.
+          </p>
+        </article>
+      </section>
 
       <footer class="footer">
         <span>Odświeżanie lokalne co 5 s</span>

@@ -1,6 +1,8 @@
 """Modbus transport, codecs, and vendor register profiles."""
 
 from .codec import (
+    decode_airflow,
+    decode_airpack_temperature,
     decode_firmware_version,
     decode_int16,
     decode_scaled_int16,
@@ -26,6 +28,8 @@ __all__ = [
     "SerialPortBusy",
     "SimulatedAirPackTransport",
     "decode_firmware_version",
+    "decode_airflow",
+    "decode_airpack_temperature",
     "decode_int16",
     "decode_scaled_int16",
     "decode_serial_number",

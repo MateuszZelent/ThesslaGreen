@@ -104,7 +104,12 @@ class GatewayState {
   int? get mode => _nullableInt(values['mode']);
   int? get supplyAirflow => _nullableInt(values['supply_airflow']);
   int? get extractAirflow => _nullableInt(values['extract_airflow']);
-  int? get activeFanSpeed => mode == 2 ? temporaryFanSpeed : manualFanSpeed;
+  int? get supplyFlowrate => _nullableInt(values['supply_flowrate']);
+  int? get extractFlowrate => _nullableInt(values['extract_flowrate']);
+  int? get supplyPercentage => _nullableInt(values['supply_percentage']);
+  int? get extractPercentage => _nullableInt(values['extract_percentage']);
+  int? get editableFanSpeed => mode == 2 ? temporaryFanSpeed : manualFanSpeed;
+  bool get powerOn => values['power'] == true || values['power'] == 1;
 }
 
 class GatewayCommandResponse {

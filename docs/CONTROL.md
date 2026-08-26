@@ -41,6 +41,16 @@ Samo zapisanie `mode=2` nie jest poprawną aktywacją chwilową. PDF wymaga jedn
 `activate_temporary_mode`; read-back potwierdza potem tryb i intensywność w `4208–4211`.
 Dokument nie publikuje rejestru czasu trwania - używany jest czas skonfigurowany w Air++.
 
+### EKO i KOMFORT
+
+To osobna preferencja regulacji temperatury, a nie czwarty tryb wentylacji. Rejestr holding
+`4304` (`0x10D0`, `comfortModePanel`) przyjmuje `0` dla EKO i `1` dla KOMFORT. EKO pozostawia
+wentylację i odzysk energii bez aktywnego grzania/chłodzenia kanałowego. KOMFORT pozwala centrali
+używać kanałowej nagrzewnicy lub chłodnicy do realizacji zadanej temperatury nawiewu. Według
+protokołu producenta KOMFORT jest niedostępny bez wymienników kanałowych. Rejestr `4305` raportuje
+rzeczywisty stan: `0` nieaktywny, `1` grzanie, `2` chłodzenie. Polecenie API
+`set_comfort_mode` zapisuje `4304` i potwierdza wybór read-backiem.
+
 ## Tryby specjalne
 
 Rejestr holding `4224` (`0x1080`, `specialMode`):
@@ -103,11 +113,17 @@ z ograniczoną retencją, a awaria historii nie zatrzymuje sterowania. Adapter H
 `X-Thessla-Source: home_assistant`; klient
 mobilny może użyć `mobile`, a automatyka `automation`.
 
-W Home Assistant encja `fan` pokazuje potwierdzoną nastawę procentową. Jej atrybuty zawierają
-również `supply_airflow_m3h` i `extract_airflow_m3h` — chwilowe przepływy z rejestrów 256/257 —
+W Home Assistant encja `fan` pokazuje potwierdzoną nastawę sterującą w trybie ręcznym lub
+chwilowym. W automacie nie udaje jednej wartości procentowej, ponieważ centrala może zadawać
+różny nawiew i wywiew do 150%. Osobne sensory pokazują aktualnie zadany nawiew i wywiew z
+rejestrów 272/273 oraz zadane strumienie z 274/275, zgodne z wartościami m³/h panelu Air++.
+Atrybuty encji zawierają również `supply_airflow_m3h` i `extract_airflow_m3h` — chwilowe pomiary
+CF z rejestrów 256/257 —
 oraz `last_command` z read-backiem. Nastawa jest potwierdzeniem przyjęcia wartości przez sterownik;
 reakcję wentylatorów obserwujemy przez przepływy, odświeżane domyślnie co 5 sekund. Protokół nie
 raportuje obrotów RPM, więc nie nazywamy przepływu obrotami.
+Gdy Constant Flow jest nieaktywny, surowe `0xffff` jest publikowane jako brak pomiaru, nie jako
+`65535 m³/h`.
 Integracja tworzy również sensor `Ostatnie potwierdzone polecenie`, którego atrybuty zawierają
 `requested_value`, `confirmed_value`, `confirmed` i numer audytu.
 
@@ -243,6 +259,7 @@ wiersze mają `online: true`, rosnący `revision`, jakość `complete` i brak lu
 oczekiwany interwał. Monitor nie wykonuje zapisów Modbus.
 
 W JSON szukaj `state.values.mode`, `manual_fan_speed`, `temporary_fan_speed`,
+`supply_flowrate` i `extract_flowrate` (wartości panelu Air++) oraz diagnostycznych pomiarów CF
 `supply_airflow` i `extract_airflow`. Gdy `serve` już działa, użyj `GET /api/v1/state` zamiast
 uruchamiać `status`, ponieważ oba procesy próbowałyby otworzyć ten sam port.
 

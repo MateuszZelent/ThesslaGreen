@@ -7,6 +7,7 @@ import pytest
 
 from thessla_green.application.control import (
     AirPackController,
+    ComfortPreference,
     ControlVerificationError,
     IdentityNotConfirmed,
     SpecialMode,
@@ -105,6 +106,26 @@ def test_special_mode_helpers_use_documented_values() -> None:
         await controller.set_special_mode(SpecialMode.NONE)
 
         assert transport.writes == [(4224, 2, 10), (4224, 10, 10), (4224, 0, 10)]
+
+    asyncio.run(run())
+
+
+def test_eco_and_comfort_modes_use_documented_register() -> None:
+    async def run() -> None:
+        transport = FakeTransport()
+        controller = AirPackController(
+            transport,
+            endpoint=transport.endpoint,
+            unit_id=10,
+            identity=DeviceIdentity(model="AirPack4", unit_id=10),
+        )
+
+        eco = await controller.set_comfort_mode(ComfortPreference.ECO, source="web")
+        comfort = await controller.set_comfort_mode(ComfortPreference.COMFORT, source="web")
+
+        assert eco.confirmed and comfort.confirmed
+        assert eco.register == comfort.register == "comfort_mode_panel"
+        assert transport.writes == [(4304, 0, 10), (4304, 1, 10)]
 
     asyncio.run(run())
 

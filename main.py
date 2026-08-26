@@ -7,6 +7,5 @@ and discovery layers. Use ``python -m thessla_green discover`` or the installed
 
 from thessla_green.__main__ import main
 
-
 if __name__ == "__main__":
     raise SystemExit(main())

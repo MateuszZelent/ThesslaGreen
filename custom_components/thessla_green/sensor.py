@@ -65,8 +65,12 @@ SENSORS = (
         UnitOfTemperature.CELSIUS,
         SensorDeviceClass.TEMPERATURE,
     ),
-    SensorSpec("supply_airflow", "Przepływ nawiewu", "m³/h"),
-    SensorSpec("extract_airflow", "Przepływ wywiewu", "m³/h"),
+    SensorSpec("supply_flowrate", "Zadany strumień nawiewu", "m³/h"),
+    SensorSpec("extract_flowrate", "Zadany strumień wywiewu", "m³/h"),
+    SensorSpec("supply_airflow", "Chwilowy pomiar CF nawiewu", "m³/h"),
+    SensorSpec("extract_airflow", "Chwilowy pomiar CF wywiewu", "m³/h"),
+    SensorSpec("supply_percentage", "Zadana intensywność nawiewu", "%"),
+    SensorSpec("extract_percentage", "Zadana intensywność wywiewu", "%"),
 )
 
 

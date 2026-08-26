@@ -3,7 +3,7 @@
   "info": {
     "title": "Thessla Green Gateway",
     "description": "Local-first, read-confirmed control API for AirPack units.",
-    "version": "0.2.1"
+    "version": "0.2.13"
   },
   "paths": {
     "/health/live": {

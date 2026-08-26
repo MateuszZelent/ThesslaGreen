@@ -7,6 +7,7 @@ import pytest
 
 from thessla_green.__main__ import (
     _doctor_report,
+    _serve,
     _serve_settings,
     _settings_from_args,
     _status,
@@ -120,6 +121,10 @@ def test_one_shot_endpoint_override_selects_matching_transport() -> None:
     tcp_settings = _settings_from_args(tcp_args)
     assert serial_settings.transport is TransportKind.SERIAL
     assert serial_settings.serial_port == "/dev/serial/by-id/adapter"
+    baud_args = build_parser().parse_args(
+        ["status", "--serial-port", "/dev/serial/by-id/adapter", "--baudrate", "19200"]
+    )
+    assert _settings_from_args(baud_args).baudrate == 19200
     assert tcp_settings.transport is TransportKind.TCP
     assert tcp_settings.host == "192.0.2.10"
     assert tcp_settings.modbus_port == 502
@@ -214,6 +219,28 @@ def test_serve_modbus_overrides_do_not_reuse_http_host_option() -> None:
     assert settings.host == "192.0.2.10"
     assert settings.modbus_port == 502
     assert settings.device_id == 11
+
+
+def test_serve_passes_cli_overrides_to_the_app_factory() -> None:
+    args = build_parser().parse_args(
+        ["serve", "--serial-port", "/dev/serial/by-id/adapter", "--unit-id", "11"]
+    )
+    gateway = object()
+    application = object()
+
+    with (
+        patch("thessla_green.__main__.build_gateway", return_value=gateway) as build,
+        patch("thessla_green.api.app.create_app", return_value=application) as create,
+        patch("uvicorn.run") as run,
+    ):
+        assert _serve(args) == 0
+
+    settings = build.call_args.args[0]
+    assert settings.serial_port == "/dev/serial/by-id/adapter"
+    assert settings.device_id == 11
+    create.assert_called_once()
+    assert create.call_args.args[0] is gateway
+    assert run.call_args.args[0] is application
 
 
 def test_backup_cli_requires_an_explicit_output_and_force_flag() -> None:

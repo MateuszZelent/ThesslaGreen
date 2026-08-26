@@ -20,9 +20,14 @@ def test_flutter_screen_uses_the_typed_gateway_client() -> None:
     assert "Chwilowy" in source
     assert "potwierdzone read-back" in source
     assert "_state = response.state" in source
+    assert "state?.powerOn" in source
 
     client = (MOBILE / "lib" / "thessla_gateway_client.dart").read_text(encoding="utf-8")
     assert "X-Thessla-Source" in client
+    assert "values['power'] == true || values['power'] == 1" in client
+    assert "supplyPercentage" in client
+    assert "supplyFlowrate" in client
+    assert "values['supply_flowrate']" in source
 
 
 def test_mobile_screen_does_not_import_modbus_or_write_registers() -> None:

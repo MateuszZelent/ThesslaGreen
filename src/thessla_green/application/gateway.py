@@ -12,9 +12,10 @@ from datetime import UTC, datetime
 
 from thessla_green.application.control import (
     DEFAULT_CONTROL_CAPABILITIES,
-    SPECIAL_MODE_NAMES,
+    USER_SELECTABLE_SPECIAL_MODES,
     AirPackController,
     AirPackMode,
+    ComfortPreference,
     CommandConflict,
     ControlResult,
     SpecialMode,
@@ -30,8 +31,9 @@ from thessla_green.domain.models import (
     TransportEndpoint,
 )
 from thessla_green.protocol.codec import (
+    decode_airflow,
+    decode_airpack_temperature,
     decode_firmware_version,
-    decode_scaled_int16,
     decode_serial_number,
 )
 from thessla_green.protocol.profile import AIRPACK4_PROFILE
@@ -186,17 +188,28 @@ class GatewayService:
             temperatures = await self.transport.read_input_registers(16, 7, self.unit_id)
             serial_block = await self.transport.read_input_registers(24, 6, self.unit_id)
             airflow = await self.transport.read_input_registers(256, 2, self.unit_id)
+            ventilation = await self.transport.read_input_registers(271, 5, self.unit_id)
+            fpx_system = await self._read_optional_holding_register(4192)
+            fpx_stage = await self._read_optional_holding_register(4198)
             mode_block = await self.transport.read_holding_registers(4208, 4, self.unit_id)
             special_mode = await self.transport.read_holding_registers(4224, 1, self.unit_id)
             comfort = await self.transport.read_holding_registers(4304, 2, self.unit_id)
             bypass_off = await self.transport.read_holding_registers(4320, 1, self.unit_id)
             bypass_mode = await self.transport.read_holding_registers(4330, 1, self.unit_id)
             power = await self.transport.read_holding_registers(4387, 1, self.unit_id)
+            erv_post_heater = await self._read_optional_holding_register(4704)
+            erv_post_heater_mode = await self._read_optional_holding_register(4711)
 
             firmware = decode_firmware_version(
                 (firmware_block[0], firmware_block[1], firmware_block[4])
             )
             serial_number = decode_serial_number(serial_block)
+            if int(ventilation[0]) not in (0, 1):
+                raise ValueError("constant flow status must be 0 or 1")
+            if any(not 0 <= int(value) <= 150 for value in ventilation[1:3]):
+                raise ValueError("active fan percentages must be in the documented range 0..150")
+            if any(not 0 <= int(value) <= 4095 for value in ventilation[3:5]):
+                raise ValueError("target airflow must be in the documented range 0..4095")
             if self.identity is None:
                 self.identity = DeviceIdentity(
                     model=AIRPACK4_PROFILE.model_name,
@@ -209,15 +222,23 @@ class GatewayService:
             values: dict[str, object] = {
                 "firmware": ".".join(str(part) for part in firmware),
                 "serial_number": serial_number or None,
-                "outdoor_temperature": decode_scaled_int16(temperatures[0], 0.1),
-                "supply_temperature": decode_scaled_int16(temperatures[1], 0.1),
-                "extract_temperature": decode_scaled_int16(temperatures[2], 0.1),
-                "fpx_temperature": decode_scaled_int16(temperatures[3], 0.1),
-                "duct_supply_temperature": decode_scaled_int16(temperatures[4], 0.1),
-                "gwc_temperature": decode_scaled_int16(temperatures[5], 0.1),
-                "ambient_temperature": decode_scaled_int16(temperatures[6], 0.1),
-                "supply_airflow": airflow[0],
-                "extract_airflow": airflow[1],
+                "outdoor_temperature": decode_airpack_temperature(temperatures[0]),
+                "supply_temperature": decode_airpack_temperature(temperatures[1]),
+                "extract_temperature": decode_airpack_temperature(temperatures[2]),
+                "fpx_temperature": decode_airpack_temperature(temperatures[3]),
+                "duct_supply_temperature": decode_airpack_temperature(temperatures[4]),
+                "gwc_temperature": decode_airpack_temperature(temperatures[5]),
+                "ambient_temperature": decode_airpack_temperature(temperatures[6]),
+                "supply_airflow": decode_airflow(airflow[0]),
+                "extract_airflow": decode_airflow(airflow[1]),
+                "constant_flow_available": airflow[0] != 0xFFFF and airflow[1] != 0xFFFF,
+                "constant_flow_active": bool(ventilation[0]),
+                "supply_percentage": ventilation[1],
+                "extract_percentage": ventilation[2],
+                "supply_flowrate": ventilation[3],
+                "extract_flowrate": ventilation[4],
+                "fpx_system_active": bool(fpx_system) if fpx_system in (0, 1) else None,
+                "fpx_stage": fpx_stage if fpx_stage in (0, 1, 2) else None,
                 "mode": mode_block[0],
                 "season": mode_block[1],
                 "manual_fan_speed": mode_block[2],
@@ -228,6 +249,12 @@ class GatewayService:
                 "bypass_off": bypass_off[0],
                 "bypass_mode": bypass_mode[0],
                 "power": power[0],
+                "erv_post_heater_active": (
+                    bool(erv_post_heater) if erv_post_heater in (0, 1) else None
+                ),
+                "erv_post_heater_mode": (
+                    erv_post_heater_mode if erv_post_heater_mode in (0, 1, 2) else None
+                ),
             }
         except (ReadResponseError, OSError, TimeoutError, ValueError, IndexError) as exc:
             self._state = DeviceState(
@@ -254,6 +281,17 @@ class GatewayService:
         )
         await self._persist_state()
         return self._state
+
+    async def _read_optional_holding_register(self, address: int) -> int | None:
+        """Read a firmware-dependent diagnostic without taking the gateway offline."""
+
+        try:
+            values = await self.transport.read_holding_registers(address, 1, self.unit_id)
+        except ReadResponseError:
+            return None
+        if len(values) != 1:
+            return None
+        return int(values[0])
 
     async def _persist_state(self) -> None:
         if self.store is None:
@@ -315,8 +353,18 @@ class GatewayService:
     async def set_special_mode(
         self, mode: SpecialMode | int, *, source: str = "gateway"
     ) -> ControlResult:
+        selected = SpecialMode(mode)
+        if selected not in USER_SELECTABLE_SPECIAL_MODES:
+            raise ValueError("special mode is observable but not safe for manual activation")
         return await self._execute_control(
-            lambda: self.controller.set_special_mode(mode, source=source)
+            lambda: self.controller.set_special_mode(selected, source=source)
+        )
+
+    async def set_comfort_mode(
+        self, mode: ComfortPreference | int, *, source: str = "gateway"
+    ) -> ControlResult:
+        return await self._execute_control(
+            lambda: self.controller.set_comfort_mode(mode, source=source)
         )
 
     async def set_power(self, enabled: bool, *, source: str = "gateway") -> ControlResult:
@@ -667,12 +715,26 @@ class GatewayService:
                     result = await self.set_mode(parsed_mode, source=source)
             elif command_type == "set_special_mode":
                 raw_mode = parameters["mode"]
+                selectable_names = {
+                    name: mode for mode, name in USER_SELECTABLE_SPECIAL_MODES.items()
+                }
                 if isinstance(raw_mode, str) and not raw_mode.isdecimal():
-                    names = {name: mode for mode, name in SPECIAL_MODE_NAMES.items()}
-                    parsed_special_mode = names[raw_mode.lower()]
+                    parsed_special_mode = selectable_names.get(raw_mode.lower())
+                    if parsed_special_mode is None:
+                        raise ValueError(
+                            "special mode is observable but not safe for manual activation"
+                        )
                 else:
                     parsed_special_mode = SpecialMode(self._parse_int(raw_mode, "mode"))
                 result = await self.set_special_mode(parsed_special_mode, source=source)
+            elif command_type == "set_comfort_mode":
+                raw_mode = parameters["mode"]
+                parsed_comfort_mode = (
+                    ComfortPreference[raw_mode.upper()]
+                    if isinstance(raw_mode, str) and not raw_mode.isdecimal()
+                    else ComfortPreference(self._parse_int(raw_mode, "mode"))
+                )
+                result = await self.set_comfort_mode(parsed_comfort_mode, source=source)
             elif command_type == "set_power":
                 result = await self.set_power(
                     self._parse_bool(parameters["enabled"]), source=source

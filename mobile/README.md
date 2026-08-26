@@ -17,7 +17,11 @@ platformowych Fluttera. Jeśli potrzebujesz tylko analizy kodu, wystarczą `flut
 `flutter analyze`.
 
 `lib/main.dart` zawiera pierwszy prosty ekran: konfigurację URL/tokenu, stan centrali, tryb pracy,
-nastawę manualną, tryby specjalne, ON/OFF oraz przepływy. Po każdej komendzie ekran przyjmuje
+nastawę manualną, aktualnie zadany nawiew/wywiew, tryby specjalne, ON/OFF oraz przepływy. Gdy
+Ekran główny pokazuje zadane strumienie `supply_flowrate` i `extract_flowrate` zgodne z panelem
+Air++. Chwilowe pomiary CF pozostają w `supply_airflow` i `extract_airflow`; gdy Constant Flow jest
+nieaktywny, mają wartość niedostępną zamiast surowego `65535`. Po każdej
+komendzie ekran przyjmuje
 wyłącznie snapshot zwrócony przez gateway z potwierdzeniem read-back; nie zapisuje stanu
 optymistycznie. Token jest obecnie używany tylko w pamięci procesu — bezpieczny magazyn systemowy
 telefonu pozostaje kolejnym krokiem.

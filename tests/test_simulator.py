@@ -22,12 +22,23 @@ def test_simulator_supports_discovery_control_and_airflow_feedback() -> None:
         assert state.online
         assert state.identity is not None
         assert state.identity.firmware == (4, 85, 16)
+        assert state.identity.serial_number == "7edf c31b 0000"
+        assert state.values["supply_percentage"] == 30
+        assert state.values["extract_percentage"] == 30
+        assert state.values["constant_flow_active"] is True
+        assert state.values["supply_flowrate"] == 180
+        assert state.values["extract_flowrate"] == 176
+        assert state.values["fpx_system_active"] is True
+        assert state.values["fpx_stage"] == 1
+        assert state.values["erv_post_heater_active"] is True
+        assert state.values["erv_post_heater_mode"] == 2
         initial_airflow = state.values["supply_airflow"]
         assert isinstance(initial_airflow, (int, float))
 
         await gateway.set_mode(1)
         await gateway.set_fan_speed(80)
         assert gateway.state.values["manual_fan_speed"] == 80
+        assert gateway.state.values["supply_percentage"] == 80
         airflow = gateway.state.values["supply_airflow"]
         assert isinstance(airflow, (int, float))
         assert airflow > initial_airflow
@@ -57,6 +68,30 @@ def test_simulator_supports_discovery_control_and_airflow_feedback() -> None:
         assert temporary_values["mode"] == 2
         assert temporary_values["temporary_fan_speed"] == 70
         assert transport.write_blocks[-1] == (4400, (2, 70, 1), 10)
+        await gateway.stop()
+
+    asyncio.run(run())
+
+
+def test_simulator_maps_inactive_constant_flow_to_unavailable_measurements() -> None:
+    async def run() -> None:
+        transport = SimulatedAirPackTransport(constant_flow_active=False)
+        gateway = GatewayService(transport, endpoint=transport.endpoint, unit_id=transport.unit_id)
+        state = await gateway.start()
+
+        assert state.values["constant_flow_available"] is False
+        assert state.values["constant_flow_active"] is False
+        assert state.values["supply_airflow"] is None
+        assert state.values["extract_airflow"] is None
+        assert state.values["supply_flowrate"] == 180
+        assert state.values["extract_flowrate"] == 176
+
+        response = await gateway.execute_command("set_fan_speed", {"percentage": 50})
+        result = response["result"]
+        assert isinstance(result, dict)
+        observation = result["airflow_observation"]
+        assert isinstance(observation, dict)
+        assert observation["available"] is False
         await gateway.stop()
 
     asyncio.run(run())

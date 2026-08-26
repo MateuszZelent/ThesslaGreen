@@ -10,8 +10,8 @@ from thessla_green.domain.models import (
     TransportEndpoint,
 )
 from thessla_green.protocol.codec import (
+    decode_airpack_temperature,
     decode_firmware_version,
-    decode_scaled_int16,
     decode_serial_number,
 )
 from thessla_green.protocol.profile import AIRPACK4_PROFILE, AirPackRegisterProfile
@@ -77,14 +77,18 @@ class AirPackProbe:
             )
             serial_number = decode_serial_number(serial_block)
             temperatures = {
-                "outdoor_temperature": decode_scaled_int16(temperature_block[0], 0.1),
-                "supply_temperature": decode_scaled_int16(temperature_block[1], 0.1),
-                "extract_temperature": decode_scaled_int16(temperature_block[2], 0.1),
-                "fpx_temperature": decode_scaled_int16(temperature_block[3], 0.1),
-                "duct_supply_temperature": decode_scaled_int16(temperature_block[4], 0.1),
-                "gwc_temperature": decode_scaled_int16(temperature_block[5], 0.1),
-                "ambient_temperature": decode_scaled_int16(temperature_block[6], 0.1),
+                "outdoor_temperature": decode_airpack_temperature(temperature_block[0]),
+                "supply_temperature": decode_airpack_temperature(temperature_block[1]),
+                "extract_temperature": decode_airpack_temperature(temperature_block[2]),
+                "fpx_temperature": decode_airpack_temperature(temperature_block[3]),
+                "duct_supply_temperature": decode_airpack_temperature(temperature_block[4]),
+                "gwc_temperature": decode_airpack_temperature(temperature_block[5]),
+                "ambient_temperature": decode_airpack_temperature(temperature_block[6]),
             }
+            if not 0 <= firmware_block[2] <= 6:
+                raise ValueError("day_of_week register is outside the documented range 0..6")
+            if not 0 <= firmware_block[3] <= 3:
+                raise ValueError("period register is outside the documented range 0..3")
         except (ValueError, IndexError, ReadResponseError) as exc:
             evidence.update(
                 firmware_registers=list(firmware_block),
@@ -107,8 +111,12 @@ class AirPackProbe:
             serial_number=serial_number or None,
             temperatures=temperatures,
         )
-        known_major = firmware[0] in {3, 4, 9}
-        if not known_major or not serial_number:
+        known_version = (
+            (firmware[0] in {3, 4} or 90 <= firmware[0] <= 99)
+            and 0 <= firmware[1] <= 99
+            and 0 <= firmware[2] <= 99
+        )
+        if not known_version or not serial_number:
             return DiscoveryResult(
                 endpoint=endpoint,
                 unit_id=unit_id,

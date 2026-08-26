@@ -14,17 +14,41 @@ i adres urządzenia `10`.
 | Firmware patch (`pp`) | input / 04 | `0x0004` | 4 | uint16 | R/- |
 | Temperatura zewnętrzna (`TZ1`) | input / 04 | `0x0010` | 16 | signed int16 × 0,1 °C | R/- |
 | Temperatura nawiewu (`TN1`) | input / 04 | `0x0011` | 17 | signed int16 × 0,1 °C | R/- |
-| Temperatura wywiewu (`TP`) | input / 04 | `0x0012` | 18 | signed int16 × 0,1 °C | R/- |
-| Temperatura za FPX (`TZ2`) | input / 04 | `0x0013` | 19 | signed int16 × 0,1 °C | R/- |
+| Temperatura powietrza usuwanego z pomieszczeń (`TP`) | input / 04 | `0x0012` | 18 | signed int16 × 0,1 °C | R/- |
+| Temperatura powietrza za nagrzewnicą wstępną FPX (`TZ2`) | input / 04 | `0x0013` | 19 | signed int16 × 0,1 °C | R/- |
 | Temperatura za nagrzewnicą (`TN2`) | input / 04 | `0x0014` | 20 | signed int16 × 0,1 °C | R/- |
 | Temperatura GWC (`TZ3`) | input / 04 | `0x0015` | 21 | signed int16 × 0,1 °C | R/- |
-| Temperatura otoczenia (`TO`) | input / 04 | `0x0016` | 22 | signed int16 × 0,1 °C | R/- |
-| Numer seryjny 1–6 | input / 04 | `0x0018–0x001D` | 24–29 | sześć słów hex | R/- |
+| Temperatura otoczenia centrali (`TO`, np. strych) | input / 04 | `0x0016` | 22 | signed int16 × 0,1 °C | R/- |
+| Numer seryjny 1–6 | input / 04 | `0x0018–0x001D` | 24–29 | sześć bajtów w słowach, łączonych parami | R/- |
 | Chwilowy nawiew | input / 04 | `0x0100` | 256 | m³/h | R/- |
 | Chwilowy wywiew | input / 04 | `0x0101` | 257 | m³/h | R/- |
+| Status Constant Flow | input / 04 | `0x010F` | 271 | 0 nieaktywny, 1 aktywny | R/- |
+| Zadana intensywność nawiewu | input / 04 | `0x0110` | 272 | 0-150% | R/- |
+| Zadana intensywność wywiewu | input / 04 | `0x0111` | 273 | 0-150% | R/- |
+| Zadany strumień nawiewu (`supply_flowrate`) | input / 04 | `0x0112` | 274 | 0-4095 m³/h | R/- |
+| Zadany strumień wywiewu (`extract_flowrate`) | input / 04 | `0x0113` | 275 | 0-4095 m³/h | R/- |
+| System przeciwzamrożeniowy FPX (`antifreezMode`) | holding / 03 | `0x1060` | 4192 | 0 nieaktywny, 1 aktywny | R/- |
+| Stopień systemu FPX (`antifreezStage`) | holding / 03 | `0x1066` | 4198 | 0 OFF, 1 FPX1, 2 FPX2 | R/- |
+| Stan wbudowanej nagrzewnicy wtórnej ERV (`postHeater_on`) | holding / 03 | `0x1260` | 4704 | 0 nieaktywna, 1 aktywna; od firmware 4.85 | R/- |
+| Konfiguracja nagrzewnicy wtórnej ERV (`cfgPostHeaterMode`) | holding / 03 | `0x1267` | 4711 | 0 wyłączona, 1 tryb 1, 2 tryb 2 | R/- |
 
 Wartość `0x8000` w rejestrach temperatur oznacza brak odczytu czujnika. Nie należy zamieniać jej
 na `-3276,8°C`.
+Publiczna mapa nie zawiera czujnika temperatury wyrzutni za wymiennikiem. `TZ2` nie może być
+używane jako jego zamiennik, ponieważ mierzy tor czerpni za nagrzewnicą FPX.
+
+Wartość `0xffff` w rejestrach przepływu `256-257` oznacza nieaktywny Constant Flow i jest
+publikowana przez gateway jako `null`, a nie `65535 m³/h`. Rejestry `272-273` opisują aktualnie
+zadaną intensywność i nie są tym samym co zapisane nastawy manualna/chwilowa `4210-4211`.
+Rejestry `274-275` zawierają zadany strumień m³/h prezentowany przez panel Air++. Nie należy
+zastępować ich chwilowymi pomiarami CF z `256-257`; API publikuje obie pary osobno.
+
+`antifreezMode` informuje o aktywności całego systemu FPX, a nie o rzeczywistym zasileniu elementu
+grzejnego. `antifreezStage` pozwala pokazać stopień FPX1/FPX2, lecz również nie jest pomiarem mocy.
+Stan wbudowanej nagrzewnicy wtórnej ERV można odczytać jednoznacznie z `postHeater_on`.
+Publiczna mapa Modbus nie udostępnia procentowej ani elektrycznej mocy żadnej z tych wbudowanych
+nagrzewnic. Rejestru input `1282` (`dac_heater`, sygnał 0–10 V) nie używamy, ponieważ dotyczy
+zewnętrznej nagrzewnicy kanałowej, której ta instalacja nie posiada.
 
 ## Podstawowe sterowanie — odczyt i zapis
 

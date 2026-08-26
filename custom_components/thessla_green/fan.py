@@ -37,7 +37,13 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
 
     @property
     def percentage(self) -> int | None:
+        # Home Assistant accepts only one 0..100 control percentage, while the
+        # AirPack can demand asymmetric values up to 150% in automatic/special
+        # operation. Do not misrepresent that state as one fan percentage;
+        # exact supply/extract demand remains available through two sensors.
         mode = self.values.get("mode")
+        if mode == 0:
+            return None
         speed_key = "temporary_fan_speed" if mode == 2 else "manual_fan_speed"
         value = self.values.get(speed_key)
         return None if value is None else int(value)
@@ -49,8 +55,13 @@ class ThesslaGreenFan(ThesslaGreenEntity, FanEntity):
         attributes: dict[str, object] = {
             "manual_setpoint_percentage": self.values.get("manual_fan_speed"),
             "temporary_setpoint_percentage": self.values.get("temporary_fan_speed"),
+            "supply_demand_percentage": self.values.get("supply_percentage"),
+            "extract_demand_percentage": self.values.get("extract_percentage"),
+            "constant_flow_available": self.values.get("constant_flow_available"),
             "supply_airflow_m3h": self.values.get("supply_airflow"),
             "extract_airflow_m3h": self.values.get("extract_airflow"),
+            "supply_flowrate_m3h": self.values.get("supply_flowrate"),
+            "extract_flowrate_m3h": self.values.get("extract_flowrate"),
             "last_command": self.coordinator.last_command,
         }
         return attributes

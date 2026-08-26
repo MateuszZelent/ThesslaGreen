@@ -11,6 +11,7 @@ from thessla_green.application.control import CommandConflict
 from thessla_green.application.gateway import GatewayNotStarted, GatewayService
 from thessla_green.control import ControlIntent, IntentPriority, PolicyArbiter
 from thessla_green.domain.models import TransportEndpoint, TransportKind
+from thessla_green.protocol.transport import ReadResponseError
 from thessla_green.storage import SQLiteStore
 
 
@@ -18,6 +19,8 @@ class FakeGatewayTransport:
     def __init__(self, endpoint: TransportEndpoint) -> None:
         self.endpoint = endpoint
         self.registers = {
+            4192: 1,
+            4198: 2,
             4208: 0,
             4209: 0,
             4210: 30,
@@ -28,6 +31,8 @@ class FakeGatewayTransport:
             4320: 0,
             4330: 0,
             4387: 1,
+            4704: 1,
+            4711: 2,
         }
         self.writes: list[tuple[int, int]] = []
         self.write_blocks: list[tuple[int, tuple[int, ...]]] = []
@@ -47,6 +52,8 @@ class FakeGatewayTransport:
             return (1, 2, 3, 4, 5, 6)
         if (address, count) == (256, 2):
             return (250, 245)
+        if (address, count) == (271, 5):
+            return (1, 30, 30, 330, 325)
         raise AssertionError((address, count, unit_id))
 
     async def read_holding_registers(
@@ -91,6 +98,13 @@ def test_gateway_confirms_identity_before_control(tmp_path: Path) -> None:
         assert state.online
         assert state.identity is not None
         assert state.identity.firmware == (4, 84, 2)
+        assert state.values["constant_flow_active"] is True
+        assert state.values["supply_flowrate"] == 330
+        assert state.values["extract_flowrate"] == 325
+        assert state.values["fpx_system_active"] is True
+        assert state.values["fpx_stage"] == 2
+        assert state.values["erv_post_heater_active"] is True
+        assert state.values["erv_post_heater_mode"] == 2
 
         result = await gateway.set_fan_speed(60)
         assert result.confirmed
@@ -98,6 +112,31 @@ def test_gateway_confirms_identity_before_control(tmp_path: Path) -> None:
         assert len(await gateway.telemetry()) >= 2
         stored_audit = await gateway.stored_audit()
         assert stored_audit[-1]["confirmed_value"] == 60
+        await gateway.stop()
+
+    asyncio.run(run())
+
+
+def test_gateway_keeps_older_firmware_online_when_heater_diagnostics_are_unsupported() -> None:
+    class OlderFirmwareTransport(FakeGatewayTransport):
+        async def read_holding_registers(
+            self, address: int, count: int, unit_id: int
+        ) -> tuple[int, ...]:
+            if address in {4704, 4711}:
+                raise ReadResponseError("illegal data address")
+            return await super().read_holding_registers(address, count, unit_id)
+
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.SERIAL, "/dev/ttyTEST")
+        gateway = GatewayService(
+            OlderFirmwareTransport(endpoint), endpoint=endpoint, unit_id=10
+        )
+
+        state = await gateway.start()
+
+        assert state.online
+        assert state.values["erv_post_heater_active"] is None
+        assert state.values["erv_post_heater_mode"] is None
         await gateway.stop()
 
     asyncio.run(run())
@@ -120,6 +159,42 @@ def test_gateway_atomically_activates_temporary_mode() -> None:
         assert gateway.state.values["mode"] == 2
         assert gateway.state.values["temporary_fan_speed"] == 65
         assert transport.write_blocks == [(4400, (2, 65, 1))]
+        assert transport.writes == []
+        await gateway.stop()
+
+    asyncio.run(run())
+
+
+def test_gateway_sets_and_confirms_comfort_preference() -> None:
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.SERIAL, "/dev/ttyTEST")
+        transport = FakeGatewayTransport(endpoint)
+        gateway = GatewayService(transport, endpoint=endpoint, unit_id=10)
+        await gateway.start()
+
+        response = await gateway.execute_command(
+            "set_comfort_mode", {"mode": "comfort"}, request_id="comfort-1"
+        )
+
+        assert response["status"] == "confirmed"
+        assert gateway.state.values["comfort_mode_panel"] == 1
+        assert transport.writes == [(4304, 1)]
+        await gateway.stop()
+
+    asyncio.run(run())
+
+
+def test_gateway_rejects_observable_input_driven_special_mode_commands() -> None:
+    async def run() -> None:
+        endpoint = TransportEndpoint(TransportKind.SERIAL, "/dev/ttyTEST")
+        transport = FakeGatewayTransport(endpoint)
+        gateway = GatewayService(transport, endpoint=endpoint, unit_id=10)
+        await gateway.start()
+
+        with pytest.raises(ValueError, match="not safe"):
+            await gateway.execute_command("set_special_mode", {"mode": "airing_button"})
+        with pytest.raises(ValueError, match="not safe"):
+            await gateway.execute_command("set_special_mode", {"mode": 3})
         assert transport.writes == []
         await gateway.stop()
 
