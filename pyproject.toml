@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thessla-green-controller"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first controller and automation service for Thessla Green heat recovery units"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,6 +12,8 @@ dependencies = [
   "fastapi>=0.115,<1",
   "pydantic-settings>=2.6,<3",
   "pymodbus>=3.11,<4",
+  "pyserial>=3.5,<4",
+  "python-dotenv>=1,<2",
   "uvicorn[standard]>=0.32,<1",
 ]
 
@@ -25,6 +27,12 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+thessla_green = ["web/*.html", "web/*.js", "web/*.css"]
+
+[project.scripts]
+thessla-green = "thessla_green.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -40,4 +48,3 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-

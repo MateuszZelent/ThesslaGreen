@@ -1,3 +1,4 @@
+from thessla_green.domain.models import DeviceIdentity, TransportEndpoint, TransportKind
 from thessla_green.registers import REGISTERS
 
 
@@ -12,3 +13,13 @@ def test_writable_registers_with_bounds_have_valid_ranges() -> None:
             assert register.writable
             assert register.minimum <= register.maximum
 
+
+def test_fallback_identity_is_safe_for_urls_and_entity_ids() -> None:
+    identity = DeviceIdentity(
+        model="AirPack4",
+        unit_id=10,
+        endpoint=TransportEndpoint(TransportKind.SERIAL, "/dev/ttyUSB0"),
+    )
+
+    assert identity.stable_id == "airpack4-serial--dev-ttyUSB0-10"
+    assert "/" not in identity.stable_id

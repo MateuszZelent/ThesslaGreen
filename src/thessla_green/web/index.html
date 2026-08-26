@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Thessla Green Gateway</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+    <script src="/ui/app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">LOCAL GATEWAY</p>
+          <h1>Thessla Green</h1>
+          <p id="identity" class="muted">Ładowanie centrali…</p>
+        </div>
+        <div id="connection" class="status status-pending" role="status">Łączenie…</div>
+      </header>
+
+      <section id="discovery-panel" class="panel discovery-panel" hidden>
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">DISCOVERY</p>
+            <h2>Znajdź centralę</h2>
+          </div>
+          <button id="run-discovery" class="button button-primary button-inline" type="button">
+            Skanuj read-only
+          </button>
+        </div>
+        <p id="discovery-message" class="hint">
+          Gateway nie ma jeszcze wybranego endpointu Modbus. Skanowanie nie zapisuje rejestrów.
+        </p>
+        <div id="discovery-results" class="discovery-results" aria-live="polite"></div>
+      </section>
+
+      <section class="metrics" aria-label="Bieżący stan">
+        <article class="metric-card metric-card-accent">
+          <span class="metric-label">Aktywna nastawa</span>
+          <strong id="active-speed" class="metric-value">—</strong>
+          <span id="active-mode" class="metric-foot">—</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Nawiew</span>
+          <strong id="supply-airflow" class="metric-value">—</strong>
+          <span class="metric-foot">m³/h chwilowo</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Wywiew</span>
+          <strong id="extract-airflow" class="metric-value">—</strong>
+          <span class="metric-foot">m³/h chwilowo</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Temperatura zewnętrzna</span>
+          <strong id="outdoor-temperature" class="metric-value">—</strong>
+          <span class="metric-foot">°C</span>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">STEROWANIE</p>
+              <h2>Wentylacja</h2>
+            </div>
+            <span id="revision" class="pill">revision —</span>
+          </div>
+
+          <label class="field">
+            <span>Tryb pracy</span>
+            <select id="mode" aria-label="Tryb pracy">
+              <option value="automatic">Automatyczny</option>
+              <option value="manual">Manualny</option>
+              <option value="temporary">Chwilowy</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field-row">
+              <span id="speed-label">Nastawa wentylacji</span>
+              <output id="speed-value" for="speed">—%</output>
+            </span>
+            <input id="speed" type="range" min="10" max="100" step="1" value="30" />
+          </label>
+          <button id="apply-speed" class="button button-primary" type="button">
+            Ustaw nastawę
+          </button>
+
+          <div class="divider"></div>
+
+          <label class="field">
+            <span>Tryb specjalny</span>
+            <select id="special-mode" aria-label="Tryb specjalny"></select>
+          </label>
+          <div class="button-row">
+            <button id="apply-special" class="button" type="button">Zastosuj tryb</button>
+            <button id="power" class="button button-secondary" type="button">—</button>
+          </div>
+        </article>
+
+        <article class="panel panel-confirmation">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">READ-BACK</p>
+              <h2>Potwierdzenie</h2>
+            </div>
+            <span id="confirmed-icon" class="confirmation-icon">✓</span>
+          </div>
+          <p id="confirmation-message" class="confirmation-message">
+            Żadne polecenie nie zostało jeszcze wysłane.
+          </p>
+          <dl class="details">
+            <div><dt>Polecenie</dt><dd id="last-command">—</dd></div>
+            <div><dt>Żądano</dt><dd id="requested-value">—</dd></div>
+            <div><dt>Potwierdzono</dt><dd id="confirmed-value">—</dd></div>
+            <div><dt>Audyt</dt><dd id="audit-sequence">—</dd></div>
+          </dl>
+          <p class="hint">
+            Nastawa jest potwierdzana odczytem rejestru. Reakcję wentylatorów obserwuj przez
+            chwilowe przepływy nawiewu i wywiewu; protokół nie raportuje RPM.
+          </p>
+        </article>
+      </section>
+
+      <details class="raw-state">
+        <summary>Pełny snapshot JSON</summary>
+        <pre id="raw-state">Ładowanie…</pre>
+      </details>
+
+      <footer class="footer">
+        <span>Odświeżanie lokalne co 5 s</span>
+        <label class="token-field">
+          <span>Token API</span>
+          <input id="api-token" type="password" autocomplete="off" placeholder="opcjonalny" />
+          <button id="save-token" class="button button-small" type="button">Zapisz</button>
+        </label>
+      </footer>
+    </main>
+    <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+  </body>
+</html>

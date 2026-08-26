@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz gateway Thessla Green",
+        "description": "Podaj adres lokalnego gatewaya FastAPI. Home Assistant nie komunikuje się bezpośrednio z Modbus.",
+        "data": {
+          "url": "Adres gatewaya",
+          "token": "Token API (opcjonalnie)"
+        }
+      },
+      "reauth": {
+        "title": "Ponowna autoryzacja gatewaya",
+        "data": {
+          "token": "Token API"
+        }
+      },
+      "reconfigure": {
+        "title": "Zmień gateway Thessla Green",
+        "data": {
+          "url": "Adres gatewaya",
+          "token": "Token API (opcjonalnie)"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Podaj poprawny adres HTTP lub HTTPS.",
+      "cannot_connect": "Nie można połączyć się z gatewayem lub urządzenie jest offline.",
+      "invalid_auth": "Gateway odrzucił token API."
+    },
+    "abort": {
+      "already_configured": "To urządzenie jest już skonfigurowane.",
+      "reauth_successful": "Autoryzacja została odnowiona.",
+      "reconfigure_successful": "Konfiguracja gatewaya została zmieniona.",
+      "unknown_error": "Nieznany błąd konfiguracji."
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect Thessla Green gateway",
+        "description": "Enter the local FastAPI gateway address. Home Assistant does not access Modbus directly.",
+        "data": {
+          "url": "Gateway URL",
+          "token": "API token (optional)"
+        }
+      },
+      "reauth": {
+        "title": "Re-authenticate gateway",
+        "data": {
+          "token": "API token"
+        }
+      },
+      "reconfigure": {
+        "title": "Change Thessla Green gateway",
+        "data": {
+          "url": "Gateway URL",
+          "token": "API token (optional)"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Enter a valid HTTP or HTTPS URL.",
+      "cannot_connect": "Unable to connect to the gateway or the device is offline.",
+      "invalid_auth": "The gateway rejected the API token."
+    },
+    "abort": {
+      "already_configured": "This device is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Gateway configuration was updated.",
+      "unknown_error": "Unknown configuration error."
+    }
+  }
+}
