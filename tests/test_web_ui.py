@@ -190,9 +190,23 @@ def test_versioned_openapi_artifact_tracks_runtime_routes() -> None:
 
     assert artifact["info"]["version"] == runtime["info"]["version"] == "0.3.0"
     assert set(artifact["paths"]) == set(runtime["paths"])
-    assert artifact["components"]["schemas"]["CommandRequest"] == runtime["components"][
-        "schemas"
-    ]["CommandRequest"]
+    # JSON Schema treats an omitted ``additionalProperties`` and an explicit
+    # ``true`` identically. Pydantic releases differ only in whether they emit
+    # that default, so compare canonical schemas rather than generator noise.
+    def canonical(value: object) -> object:
+        if isinstance(value, dict):
+            return {
+                key: canonical(item)
+                for key, item in value.items()
+                if not (key == "additionalProperties" and item is True)
+            }
+        if isinstance(value, list):
+            return [canonical(item) for item in value]
+        return value
+
+    artifact_command = artifact["components"]["schemas"]["CommandRequest"]
+    runtime_command = runtime["components"]["schemas"]["CommandRequest"]
+    assert canonical(artifact_command) == canonical(runtime_command)
 
 
 def test_command_request_rejects_unknown_fields_and_boolean_revision() -> None:
